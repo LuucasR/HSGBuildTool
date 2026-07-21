@@ -1,5 +1,6 @@
-using System.Text.Json;
 using System.IO;
+using System.Text.Json;
+
 namespace FMFCBuildTool.Services;
 
 public static class UnrealLocator
@@ -9,27 +10,41 @@ public static class UnrealLocator
         if (!File.Exists(projectFile))
             throw new FileNotFoundException(projectFile);
 
-        using var doc = JsonDocument.Parse(File.ReadAllText(projectFile));
 
-        if (!doc.RootElement.TryGetProperty("EngineAssociation", out var association))
-            throw new Exception("EngineAssociation not found in .uproject");
+        using var doc = JsonDocument.Parse(
+            File.ReadAllText(projectFile));
+
+
+        if (!doc.RootElement.TryGetProperty(
+                "EngineAssociation",
+                out var association))
+        {
+            throw new Exception(
+                "EngineAssociation not found in .uproject");
+        }
+
 
         var version = association.GetString();
+
 
         if (string.IsNullOrWhiteSpace(version))
             throw new Exception("Invalid EngineAssociation.");
 
+
         var possibleRoots = new[]
         {
             Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.ProgramFiles),
                 "Epic Games",
                 $"UE_{version}"),
+
 
             Path.Combine(
                 "C:\\Program Files",
                 "Epic Games",
                 $"UE_{version}"),
+
 
             Path.Combine(
                 "D:\\Epic Games",
@@ -46,6 +61,7 @@ public static class UnrealLocator
                 "BatchFiles",
                 "RunUAT.bat");
 
+
             if(File.Exists(runUAT))
                 return runUAT;
         }
@@ -56,13 +72,14 @@ public static class UnrealLocator
     }
 
 
-    public static string FindEngineRoot(string projectFile)
-    {
-        var runUAT = FindRunUAT(projectFile);
 
-        return Directory.GetParent(
-                Directory.GetParent(
-                    Directory.GetParent(runUAT)!.FullName)!.FullName)!
-            .FullName;
+    public static string FindEditorCmd(string enginePath)
+    {
+        return Path.Combine(
+            enginePath,
+            "Engine",
+            "Binaries",
+            "Win64",
+            "UnrealEditor-Cmd.exe");
     }
 }

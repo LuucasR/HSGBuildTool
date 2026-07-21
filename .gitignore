@@ -5,3 +5,7 @@ obj/
 *.suo
 *.cache
 .idea/
+bin/
+obj/
+.idea/
+.vs/

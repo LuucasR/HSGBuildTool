@@ -7,4 +7,6 @@ public class AppConfig
     public string LastProject { get; set; } = "";
 
     public string LastAction { get; set; } = "Package";
+    
+    public string LastEnginePath { get; set; } = "";
 }
