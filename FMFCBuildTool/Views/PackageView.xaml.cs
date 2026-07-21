@@ -42,36 +42,23 @@ public partial class PackageView : UserControl
         EngineTextBox.Text = Context.EnginePath;
 
         ArchiveTextBox.Text = Config.LastArchiveFolder;
-        ProjectTextBox.Text = Config.LastProject;
+        
+        if (!string.IsNullOrWhiteSpace(Config.LastProject))
+        {
+            Context.ProjectFile = Config.LastProject;
+
+            Context.ProjectDirectory =
+                ProjectLoader.GetProjectDirectory(
+                    Config.LastProject);
+
+            ProjectTextBox.Text =
+                Config.LastProject;
+        }
 
 
         BuildButton.Click += BuildButton_Click;
         CancelButton.Click += CancelButton_Click;
-        
-        Runner.OutputReceived += text =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                OutputTextBox.AppendText(
-                    text + Environment.NewLine);
-
-                OutputTextBox.ScrollToEnd();
-            });
-        };
-
-
-        Runner.ProcessExited += code =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                OutputTextBox.AppendText(
-                    Environment.NewLine +
-                    $"========== PROCESS EXITED ({code}) ==========" +
-                    Environment.NewLine);
-            });
-        };
     }
-
 
 
     private async void BuildButton_Click(object sender, RoutedEventArgs e)
@@ -242,49 +229,43 @@ public partial class PackageView : UserControl
         object sender,
         RoutedEventArgs e)
     {
-        var dialog =
-            new OpenFileDialog
-            {
-                Filter =
-                "Unreal Project (*.uproject)|*.uproject",
-
-                CheckFileExists = true
-            };
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Unreal Project (*.uproject)|*.uproject",
+            CheckFileExists = true
+        };
 
 
-        if(dialog.ShowDialog() != true)
+        if (dialog.ShowDialog() != true)
             return;
-
-
-
-        Context.ProjectFile =
-            dialog.FileName;
-
+        
+        ProjectTextBox.Text = dialog.FileName;
+        
+        Context.ProjectFile = dialog.FileName;
 
         Context.ProjectDirectory =
             ProjectLoader.GetProjectDirectory(
                 dialog.FileName);
-
-
-
+        
         Context.Maps =
             MapScanner.Scan(
                 dialog.FileName);
 
 
-
-        AllMaps =
-            Context.Maps;
+        AllMaps = Context.Maps;
 
 
         MapsListView.ItemsSource =
             Context.Maps;
+
+        
+        Config.LastProject =
+            dialog.FileName;
+
+        ConfigService.Save(Config);
     }
 
-
-
-
-
+    
     private void BrowseArchive_Click(
         object sender,
         RoutedEventArgs e)

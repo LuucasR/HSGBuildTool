@@ -15,8 +15,7 @@
                     <RowDefinition Height="Auto"/> <!-- Project -->
                     <RowDefinition Height="Auto"/> <!-- Engine -->
                     <RowDefinition Height="Auto"/> <!-- Build Options -->
-                    <RowDefinition Height="220"/>  <!-- Maps -->
-                    <RowDefinition Height="*"/>    <!-- Output -->
+                    <RowDefinition Height="*"/>  <!-- Maps -->
                     <RowDefinition Height="Auto"/> <!-- Buttons -->
 
                 </Grid.RowDefinitions>
@@ -282,8 +281,11 @@
                     </DockPanel>
 
                     <ListView
+                        x:Name="MapsListView"
                         Grid.Row="1"
-                        x:Name="MapsListView">
+
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
 
                         <ListView.View>
 
@@ -299,10 +301,12 @@
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
 
+
                                 <GridViewColumn
                                     Header="Map"
                                     Width="220"
                                     DisplayMemberBinding="{Binding Name}"/>
+
 
                                 <GridViewColumn
                                     Header="Path"
@@ -342,7 +346,7 @@
 
             </GroupBox>
 
-            <!-- OUTPUT -->
+            <!-- OUTPUT 
 
             <GroupBox
                 Grid.Row="4"
@@ -359,7 +363,7 @@
                     HorizontalScrollBarVisibility="Auto"
                     TextWrapping="NoWrap"/>
 
-            </GroupBox>
+            </GroupBox>-->
 
             <!-- BUTTONS -->
 
