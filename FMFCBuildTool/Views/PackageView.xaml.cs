@@ -193,6 +193,13 @@ public partial class PackageView : UserControl
         }
         finally
         {
+            BuildTimer.Stop();
+
+            TimerCancellation?.Cancel();
+
+            BuildTimeText.Text =
+                $"Finished ({BuildTimer.Elapsed:hh\\:mm\\:ss})";
+            
             IsBuilding = false;
 
             BuildButton.IsEnabled = true;
@@ -335,6 +342,9 @@ public partial class PackageView : UserControl
         BuildTimer.Stop();
 
         TimerCancellation?.Cancel();
+        
+        BuildTimeText.Text =
+            $"Canceled ({BuildTimer.Elapsed:hh\\:mm\\:ss})";
     }
 
 
