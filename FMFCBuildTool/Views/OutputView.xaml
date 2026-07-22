@@ -1,0 +1,19 @@
+<UserControl x:Class="FMFCBuildTool.Views.OutputView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Margin="15">
+
+        <TextBox
+            x:Name="OutputTextBox"
+            Background="{StaticResource InputBrush}"
+            Foreground="{StaticResource TextBrush}"
+            IsReadOnly="True"
+            AcceptsReturn="True"
+            TextWrapping="NoWrap"
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Auto"/>
+
+    </Grid>
+
+</UserControl>

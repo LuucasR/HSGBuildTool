@@ -9,22 +9,23 @@ public partial class MainWindow : Window
 {
     private readonly ProcessRunner Runner = new();
     private readonly BuildContext Context = new();
-
+    private readonly OutputService Output = new();
 
     public MainWindow()
     {
         InitializeComponent();
-
-
+        
         Runner.OutputReceived += text =>
         {
-            Dispatcher.Invoke(() =>
-            {
-                OutputTextBox.AppendText(
-                    text + Environment.NewLine);
+            Output.Write(text);
+        };
 
-                OutputTextBox.ScrollToEnd();
-            });
+        Runner.ProcessExited += code =>
+        {
+            Output.Write(
+                Environment.NewLine +
+                $"========== PROCESS EXITED ({code}) ==========" +
+                Environment.NewLine);
         };
 
 
@@ -41,7 +42,23 @@ public partial class MainWindow : Window
             });
         };
 
+        Runner.ProcessExited += code =>
+        {
+            Output.Write("");
+            Output.Write($"========== PROCESS EXITED ({code}) ==========");
+            Output.Write("");
+        };
+        Output.MessageReceived += OnOutputMessageReceived;
 
+        Loaded += (_, _) =>
+        {
+            OutputTextBox.Text = Output.GetContent();
+        };
+
+        Unloaded += (_, _) =>
+        {
+            Output.MessageReceived -= OnOutputMessageReceived;
+        };
         ShowPackage();
     }
 
@@ -63,22 +80,45 @@ public partial class MainWindow : Window
     }
 
 
+    private void Output_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        SmallOutputPanel.Visibility = Visibility.Collapsed;
+        
+        MainContent.Content =
+            new OutputView(Output);
+        
+    }
+    
 
     private void ShowPackage()
     {
+        SmallOutputPanel.Visibility = Visibility.Visible;
+        
         MainContent.Content =
             new PackageView(
                 Context,
-                Runner);
+                Runner, Output);
     }
 
 
 
     private void ShowNavigation()
     {
+        SmallOutputPanel.Visibility = Visibility.Visible;
+        
         MainContent.Content =
             new NavigationView(
                 Context,
-                Runner);
+                Runner, Output);
+    }
+    private void OnOutputMessageReceived(string message)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            OutputTextBox.AppendText(message + Environment.NewLine);
+            OutputTextBox.ScrollToEnd();
+        });
     }
 }

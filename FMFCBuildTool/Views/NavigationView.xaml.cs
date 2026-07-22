@@ -11,17 +11,19 @@ public partial class NavigationView : UserControl
 {
     private readonly BuildContext Context;
     private readonly ProcessRunner Runner;
-
+    private readonly OutputService Output;
 
     public NavigationView(
         BuildContext context,
-        ProcessRunner runner)
+        ProcessRunner runner,
+        OutputService output
+        )
     {
         InitializeComponent();
 
         Context = context;
         Runner = runner;
-
+        Output = output;
         LoadData();
     }
 

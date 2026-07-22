@@ -25,17 +25,20 @@ public partial class PackageView : UserControl
 
     private bool IsBuilding;
     private List<MapItem> AllMaps = new();
+    private readonly OutputService Output;
 
 
     public PackageView(
         BuildContext context,
-        ProcessRunner runner)
+        ProcessRunner runner,
+        OutputService output)
     {
         InitializeComponent();
 
         Context = context;
         Runner = runner;
-
+        Output = output;
+        
         Config = ConfigService.Load();
 
 
@@ -58,6 +61,8 @@ public partial class PackageView : UserControl
 
         BuildButton.Click += BuildButton_Click;
         CancelButton.Click += CancelButton_Click;
+        
+        Runner.OutputReceived += Output.Write;
     }
 
 
@@ -396,4 +401,5 @@ public partial class PackageView : UserControl
 
         MapsListView.Items.Refresh();
     }
+    
 }

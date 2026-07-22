@@ -59,28 +59,22 @@
 
         <!-- OUTPUT -->
 
-        <GroupBox DockPanel.Dock="Bottom"
-                  Height="220"
-                  Margin="10"
-                  Header="Output">
-
+        <GroupBox
+            x:Name="SmallOutputPanel"
+            DockPanel.Dock="Bottom"
+            Height="220"
+            Margin="10"
+            Header="Output">
 
             <TextBox
                 x:Name="OutputTextBox"
-
                 Background="{StaticResource InputBrush}"
                 Foreground="{StaticResource TextBrush}"
-
                 IsReadOnly="True"
-
                 TextWrapping="Wrap"
-
                 AcceptsReturn="True"
-
                 VerticalScrollBarVisibility="Auto"
-
                 HorizontalScrollBarVisibility="Auto"/>
-
 
         </GroupBox>
 
@@ -124,14 +118,17 @@
                     Margin="0,0,0,10"
                     Content="💡 Lighting"/>
 
-
-
                 <Button
                     Height="45"
                     Margin="0,0,0,25"
                     Content="⚙ Settings"/>
-
-
+                
+                <Button
+                    Height="45"
+                    Margin="0,0,0,10"
+                    Content="📝 Output"
+                    Click="Output_Click"/>
+                
 
                 <Separator/>
 
