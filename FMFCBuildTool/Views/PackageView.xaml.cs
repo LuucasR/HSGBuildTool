@@ -79,7 +79,11 @@ public partial class PackageView : UserControl
         {
             var cfg = new BuildConfiguration
             {
-                
+                FileOpenLog = FileOpenLogCheckBox.IsChecked == true,
+                StdOut = StdOutCheckBox.IsChecked == true,
+                CrashForUAT = CrashForUATCheckBox.IsChecked == true,
+                Unattended = UnattendedCheckBox.IsChecked == true,
+                NoLogTimes = NoLogTimesCheckBox.IsChecked == true,
                 NoCompile = NoCompileCheckBox.IsChecked == true,
                 NoCompileEditor = NoCompileEditorCheckBox.IsChecked == true,
                 UnversionedCookedContent = UnversionedCookedContentCheckBox.IsChecked == true,

@@ -133,84 +133,115 @@
             Text="Packaging"/>
 
         <Grid
-            Grid.Row="1"
-            Grid.Column="1"
-            Grid.ColumnSpan="4"
-            Margin="0,8,0,0">
+    Grid.Row="1"
+    Grid.Column="1"
+    Grid.ColumnSpan="4"
+    Margin="0,8,0,0">
 
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180"/>
-                <ColumnDefinition Width="180"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220"/>
+        <ColumnDefinition Width="220"/>
+        <ColumnDefinition Width="220"/>
+        <ColumnDefinition Width="220"/>
+    </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
+    <!-- Column 1 -->
 
-                <CheckBox
-                    x:Name="BuildCheckBox"
-                    Content="Build"
-                    IsChecked="True"/>
+    <StackPanel Grid.Column="0">
 
-                <CheckBox
-                    x:Name="CookCheckBox"
-                    Content="Cook"
-                    IsChecked="True"/>
+        <CheckBox x:Name="BuildCheckBox"
+                  Content="Build"
+                  IsChecked="True"/>
 
-                <CheckBox
-                    x:Name="StageCheckBox"
-                    Content="Stage"
-                    IsChecked="True"/>
+        <CheckBox x:Name="CookCheckBox"
+                  Content="Cook"
+                  IsChecked="True"/>
 
-                <CheckBox
-                    x:Name="PackageCheckBox"
-                    Content="Package"
-                    IsChecked="True"/>
+        <CheckBox x:Name="StageCheckBox"
+                  Content="Stage"
+                  IsChecked="True"/>
 
-                <CheckBox x:Name="NoCompileCheckBox"
-                          Content="No Compile"
-                          IsChecked="True"/>
+        <CheckBox x:Name="PackageCheckBox"
+                  Content="Package"
+                  IsChecked="True"/>
 
-                <CheckBox x:Name="NoCompileEditorCheckBox"
-                          Content="No Compile Editor"
-                          IsChecked="True"/>
+        <CheckBox x:Name="ArchiveCheckBox"
+                  Content="Archive"
+                  IsChecked="True"/>
 
-                <CheckBox x:Name="UnversionedCookedContentCheckBox"
-                          Content="Unversioned Cooked Content"
-                          IsChecked="True"/>
+        <CheckBox x:Name="PakCheckBox"
+                  Content="Pak"
+                  IsChecked="True"/>
 
-                <CheckBox x:Name="CookIncrementalCheckBox"
-                          Content="Cook Incremental"/>
+        <CheckBox x:Name="CompressedCheckBox"
+                  Content="Compressed"
+                  IsChecked="True"/>
 
-                <CheckBox x:Name="ZenStoreCheckBox"
-                          Content="Zen Store"/>
-                
-                <CheckBox
-                    x:Name="SkipCookingEditorContentCheckBox"
-                    Content="Skip Cooking Editor Content"
-                    IsChecked="True"/>
-            </StackPanel>
+    </StackPanel>
 
-            <StackPanel Grid.Column="1">
+    <!-- Column 2 -->
 
-                <CheckBox
-                    x:Name="ArchiveCheckBox"
-                    Content="Archive"
-                    IsChecked="True"/>
+    <StackPanel Grid.Column="1">
 
-                <CheckBox
-                    x:Name="PakCheckBox"
-                    Content="Pak"
-                    IsChecked="True"/>
+        <CheckBox x:Name="NoCompileCheckBox"
+                  Content="No Compile"
+                  IsChecked="True"/>
 
-                <CheckBox
-                    x:Name="CompressedCheckBox"
-                    Content="Compressed"
-                    IsChecked="True"/>
+        <CheckBox x:Name="NoCompileEditorCheckBox"
+                  Content="No Compile Editor"
+                  IsChecked="True"/>
 
-            </StackPanel>
+        <CheckBox x:Name="UnversionedCookedContentCheckBox"
+                  Content="Unversioned Cooked Content"
+                  IsChecked="True"/>
 
-        </Grid>
+        <CheckBox x:Name="CookIncrementalCheckBox"
+                  Content="Cook Incremental"/>
 
+        <CheckBox x:Name="ZenStoreCheckBox"
+                  Content="Zen Store"/>
+
+    </StackPanel>
+
+    <!-- Column 3 -->
+
+    <StackPanel Grid.Column="2">
+
+        <CheckBox x:Name="SkipCookingEditorContentCheckBox"
+                  Content="Skip Cooking Editor Content"
+                  IsChecked="True"/>
+
+        <CheckBox x:Name="FileOpenLogCheckBox"
+                  Content="File Open Log"
+                  IsChecked="True"/>
+
+        <CheckBox x:Name="StdOutCheckBox"
+                  Content="StdOut"
+                  IsChecked="True"/>
+
+        <CheckBox x:Name="CrashForUATCheckBox"
+                  Content="Crash For UAT"
+                  IsChecked="True"/>
+        
+        <CheckBox x:Name="UnattendedCheckBox"
+                  Content="Unattended"
+                  IsChecked="True"/>
+
+        <CheckBox x:Name="NoLogTimesCheckBox"
+                  Content="No Log Times"
+                  IsChecked="True"/>
+
+    </StackPanel>
+
+    <!-- Column 4 -->
+
+    <StackPanel Grid.Column="3">
+
+ 
+
+    </StackPanel>
+
+</Grid>
         <!-- Cook Mode -->
 
         <TextBlock

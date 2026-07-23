@@ -17,15 +17,15 @@ public static class RunUATBuilder
 
         args.Append("-noP4 ");
         args.Append("-platform=Win64 ");
+        if (config.CookCultures.Count > 0)
+        {
+            args.Append($"-CookCultures={string.Join("+", config.CookCultures)} ");
+        }
         args.Append($"-clientconfig={config.Configuration} ");
         args.Append($"-serverconfig={config.Configuration} ");
 
         args.Append("-installed ");
         args.Append("-utf8output ");
-
-        var engineDir = Directory.GetParent(
-            Directory.GetParent(
-                Directory.GetParent(config.RunUAT)!.FullName)!.FullName)!.FullName;
 
         if (!string.IsNullOrWhiteSpace(config.UnrealEditorCmd))
         {
@@ -40,16 +40,19 @@ public static class RunUATBuilder
         
         if (config.NoCompileEditor)
             args.Append("-nocompileeditor ");
-
+        
         if (config.UnversionedCookedContent)
             args.Append("-unversionedcookedcontent ");
 
         if (config.CookIncremental)
             args.Append("-cookincremental ");
-
+        
         if (config.ZenStore)
-            args.Append("-zenstore ");
-
+        {
+            args.Append("-ZenStore ");
+            args.Append("-forcerecook=false ");
+        }
+        
         if (config.Build)
             args.Append("-build ");
 
@@ -68,15 +71,41 @@ public static class RunUATBuilder
         if (config.Pak)
             args.Append("-pak ");
 
+        if (config.IoStore)
+            args.Append("-iostore ");
+        if (config.Prereqs)
+            args.Append("-prereqs ");
+        
+        if (config.Distribution)
+            args.Append("-distribution ");
+        
+        if (config.CrashReporter)
+            args.Append("-crashreporter ");
+        if (config.Server)
+            args.Append("-server ");
+        if (config.Client)
+            args.Append("-client ");
         if (config.Compressed)
             args.Append("-compressed ");
 
-        if (!config.UseProjectDefaultMaps)
+        if (config.FileOpenLog)
+            args.Append("-fileopenlog ");
+
+        if (config.StdOut)
+            args.Append("-stdout ");
+
+        if (config.CrashForUAT)
+            args.Append("-CrashForUAT ");
+
+        if (config.Unattended)
+            args.Append("-unattended ");
+
+        if (config.NoLogTimes)
+            args.Append("-NoLogTimes ");
+        
+        if (!config.UseProjectDefaultMaps && config.Maps.Count > 0)
         {
-            foreach (var map in config.Maps)
-            {
-                args.Append($"-map={map} ");
-            }
+            args.Append($"-map={string.Join("+", config.Maps)} ");
         }
         
         if (config.Archive)
