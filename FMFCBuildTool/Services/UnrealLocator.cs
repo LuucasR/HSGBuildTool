@@ -82,4 +82,28 @@ public static class UnrealLocator
             "Win64",
             "UnrealEditor-Cmd.exe");
     }
+    
+    public static string FindUnrealEditorCmd(string projectFile)
+    {
+        var runUAT = FindRunUAT(projectFile);
+
+        var engineRoot =
+            Directory.GetParent(
+                Directory.GetParent(
+                    Directory.GetParent(runUAT)!.FullName)!.FullName)!.FullName;
+
+        var editor =
+            Path.Combine(
+                engineRoot,
+                "Binaries",
+                "Win64",
+                "UnrealEditor-Cmd.exe");
+
+        if (!File.Exists(editor))
+            throw new FileNotFoundException(
+                "Couldn't locate UnrealEditor-Cmd.exe",
+                editor);
+
+        return editor;
+    }
 }

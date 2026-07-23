@@ -8,6 +8,8 @@ public class BuildConfiguration
     public string RunUAT { get; set; } = "";
     public string Configuration { get; set; } = "";
 
+    public string UnrealEditorCmd { get; set; } = "";
+    
     public bool Build { get; set; }
     public bool Cook { get; set; }
     public bool Stage { get; set; }
@@ -24,5 +26,6 @@ public class BuildConfiguration
     public bool CookIncremental { get; set; }
     public bool ZenStore { get; set; }
 
+    public bool SkipCookingEditorContent { get; set; }
     public List<string> Maps { get; } = new();
 }

@@ -9,7 +9,8 @@ public static class RunUATBuilder
     public static string Build(BuildConfiguration config)
     {
         var args = new StringBuilder();
-
+        
+        
         args.Append("BuildCookRun ");
 
         args.Append($"-project=\"{config.ProjectFile}\" ");
@@ -22,20 +23,21 @@ public static class RunUATBuilder
         args.Append("-installed ");
         args.Append("-utf8output ");
 
-        var editorExe = Path.Combine(
-            Path.GetDirectoryName(Path.GetDirectoryName(config.RunUAT)!)!,
-            "Binaries",
-            "Win64",
-            "UnrealEditor-Cmd.exe");
+        var engineDir = Directory.GetParent(
+            Directory.GetParent(
+                Directory.GetParent(config.RunUAT)!.FullName)!.FullName)!.FullName;
 
-        if (File.Exists(editorExe))
+        if (!string.IsNullOrWhiteSpace(config.UnrealEditorCmd))
         {
-            args.Append($"-unrealexe=\"{editorExe}\" ");
+            args.Append($"-unrealexe=\"{config.UnrealEditorCmd}\" ");
         }
 
         if (config.NoCompile)
             args.Append("-nocompile ");
 
+        if (config.SkipCookingEditorContent)
+            args.Append("-SkipCookingEditorContent ");
+        
         if (config.NoCompileEditor)
             args.Append("-nocompileeditor ");
 

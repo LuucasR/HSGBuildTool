@@ -40,9 +40,7 @@ public partial class PackageView : UserControl
         Output = output;
         
         Config = ConfigService.Load();
-
-
-        EngineTextBox.Text = Context.EnginePath;
+        
 
         ArchiveTextBox.Text = Config.LastArchiveFolder;
         
@@ -62,7 +60,6 @@ public partial class PackageView : UserControl
         BuildButton.Click += BuildButton_Click;
         CancelButton.Click += CancelButton_Click;
         
-        //Runner.OutputReceived += Output.Write;
     }
 
 
@@ -134,9 +131,15 @@ public partial class PackageView : UserControl
                 Compressed =
                     CompressedCheckBox.IsChecked == true,
 
-
+                SkipCookingEditorContent =
+                    SkipCookingEditorContentCheckBox.IsChecked == true,
+                
                 UseProjectDefaultMaps =
-                    UseProjectDefaultMapsCheckBox.IsChecked == true
+                    UseProjectDefaultMapsCheckBox.IsChecked == true,
+                
+                UnrealEditorCmd =
+                    UnrealLocator.FindUnrealEditorCmd(
+                        Context.ProjectFile),
             };
 
 
@@ -299,45 +302,7 @@ public partial class PackageView : UserControl
                 dialog.SelectedPath;
         }
     }
-
-
-
-
-
-    private void BrowseEngine_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new VistaFolderBrowserDialog();
-
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
-        {
-            var selected = dialog.SelectedPath;
-
-
-            if (selected.EndsWith(
-                    @"Engine\Binaries\Win64"))
-            {
-                selected =
-                    Directory.GetParent(
-                            Directory.GetParent(
-                                    Directory.GetParent(selected)!.FullName)!
-                                .FullName)!
-                        .FullName;
-            }
-
-
-            Context.EnginePath = selected;
-
-            EngineTextBox.Text = selected;
-
-            Config.LastEnginePath = selected;
-
-            ConfigService.Save(Config);
-        }
-    }
-
-
-
-
+    
 
     private void CancelButton_Click(
         object sender,

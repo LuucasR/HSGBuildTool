@@ -48,29 +48,6 @@
                 </Grid>
 
             </GroupBox>
-
-                        <GroupBox Grid.Row= "1"
-                                  Header="Unreal Engine">
-
-                            <Grid Margin="10">
-
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition/>
-                                    <ColumnDefinition Width="120"/>
-                                </Grid.ColumnDefinitions>
-
-
-                                <TextBox x:Name="EngineTextBox"
-                                         IsReadOnly="True"/>
-
-
-                                <Button Grid.Column="1"
-                                        Content="Browse"
-                                        Click="BrowseEngine_Click"/>
-
-                            </Grid>
-
-                        </GroupBox>
                         
             <!-- BUILD OPTIONS -->
                 <GroupBox
@@ -206,6 +183,11 @@
 
                 <CheckBox x:Name="ZenStoreCheckBox"
                           Content="Zen Store"/>
+                
+                <CheckBox
+                    x:Name="SkipCookingEditorContentCheckBox"
+                    Content="Skip Cooking Editor Content"
+                    IsChecked="True"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1">
