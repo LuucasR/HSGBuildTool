@@ -17,10 +17,13 @@ public static class RunUATBuilder
 
         args.Append("-noP4 ");
         args.Append("-platform=Win64 ");
+        
         if (config.CookCultures.Count > 0)
         {
             args.Append($"-CookCultures={string.Join("+", config.CookCultures)} ");
+            
         }
+        
         args.Append($"-clientconfig={config.Configuration} ");
         args.Append($"-serverconfig={config.Configuration} ");
 

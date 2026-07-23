@@ -16,6 +16,12 @@ public class BuildConfiguration
     public bool Unattended { get; set; } = true;
     public bool NoLogTimes { get; set; } = true;
     
+    public bool Prereqs { get; set; }
+    public bool Distribution { get; set; }
+    public bool CrashReporter { get; set; }
+    public bool Client { get; set; }
+    public bool Server { get; set; }
+    
     public bool Build { get; set; }
     public bool Cook { get; set; }
     public bool Stage { get; set; }
@@ -25,12 +31,6 @@ public class BuildConfiguration
     public bool Pak { get; set; }
     public bool IoStore { get; set; } = true;
     
-    public bool Prereqs { get; set; }
-    public bool Distribution { get; set; }
-    
-    public bool CrashReporter { get; set; }
-    public bool Server { get; set; }
-    public bool Client { get; set; }
     public bool Compressed { get; set; }
     public bool FullCook { get; set; }
     public bool UseProjectDefaultMaps { get; set; }

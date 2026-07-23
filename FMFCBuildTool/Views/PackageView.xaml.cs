@@ -79,6 +79,11 @@ public partial class PackageView : UserControl
         {
             var cfg = new BuildConfiguration
             {
+                Prereqs = PrereqsCheckBox.IsChecked == true,
+                Distribution = DistributionCheckBox.IsChecked == true,
+                CrashReporter = CrashReporterCheckBox.IsChecked == true,
+                Client = ClientCheckBox.IsChecked == true,
+                Server = ServerCheckBox.IsChecked == true,
                 FileOpenLog = FileOpenLogCheckBox.IsChecked == true,
                 StdOut = StdOutCheckBox.IsChecked == true,
                 CrashForUAT = CrashForUATCheckBox.IsChecked == true,
@@ -109,7 +114,13 @@ public partial class PackageView : UserControl
                     .Content!
                     .ToString()!,
 
-
+                CookCultures =
+                [
+                    ((ComboBoxItem)CookCultureComboBox.SelectedItem)
+                    .Content!
+                    .ToString()!
+                ],
+                
                 FullCook =
                     FullCookRadio.IsChecked == true,
 

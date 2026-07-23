@@ -62,8 +62,10 @@
             <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="120"/>
             <ColumnDefinition Width="180"/>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="140"/>
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
@@ -122,7 +124,34 @@
             <ComboBoxItem Content="DebugGame"/>
 
         </ComboBox>
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="5"
+            Margin="15,0,5,0"
+            VerticalAlignment="Center"
+            Text="Culture"/>
 
+        <ComboBox
+            x:Name="CookCultureComboBox"
+            Grid.Row="0"
+            Grid.Column="6"
+            Width="120"
+            SelectedIndex="0"
+            Foreground="Black">
+
+            <ComboBoxItem Content="en"/>
+            <ComboBoxItem Content="es"/>
+            <ComboBoxItem Content="fr"/>
+            <ComboBoxItem Content="de"/>
+            <ComboBoxItem Content="it"/>
+            <ComboBoxItem Content="pt-BR"/>
+            <ComboBoxItem Content="ja"/>
+            <ComboBoxItem Content="ko"/>
+            <ComboBoxItem Content="zh-Hans"/>
+            <ComboBoxItem Content="zh-Hant"/>
+            <ComboBoxItem Content="ru"/>
+
+        </ComboBox>
         <!-- Build Options -->
 
         <TextBlock
@@ -176,6 +205,9 @@
         <CheckBox x:Name="CompressedCheckBox"
                   Content="Compressed"
                   IsChecked="True"/>
+        <CheckBox x:Name="CookIncrementalCheckBox"
+                  Content="Cook Incremental"/>
+        
 
     </StackPanel>
 
@@ -194,12 +226,26 @@
         <CheckBox x:Name="UnversionedCookedContentCheckBox"
                   Content="Unversioned Cooked Content"
                   IsChecked="True"/>
+        
+        <CheckBox
+            x:Name="PrereqsCheckBox"
+            Content="Prerequisites"/>
 
-        <CheckBox x:Name="CookIncrementalCheckBox"
-                  Content="Cook Incremental"/>
+        <CheckBox
+            x:Name="DistributionCheckBox"
+            Content="Distribution"/>
 
-        <CheckBox x:Name="ZenStoreCheckBox"
-                  Content="Zen Store"/>
+        <CheckBox
+            x:Name="CrashReporterCheckBox"
+            Content="Crash Reporter"/>
+
+        <CheckBox
+            x:Name="ClientCheckBox"
+            Content="Client"/>
+
+        <CheckBox
+            x:Name="ServerCheckBox"
+            Content="Server"/>
 
     </StackPanel>
 
@@ -207,6 +253,9 @@
 
     <StackPanel Grid.Column="2">
 
+        <CheckBox x:Name="ZenStoreCheckBox"
+                  Content="Zen Store"/>
+        
         <CheckBox x:Name="SkipCookingEditorContentCheckBox"
                   Content="Skip Cooking Editor Content"
                   IsChecked="True"/>
