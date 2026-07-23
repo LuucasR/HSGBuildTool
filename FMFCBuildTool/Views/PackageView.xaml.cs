@@ -62,7 +62,7 @@ public partial class PackageView : UserControl
         BuildButton.Click += BuildButton_Click;
         CancelButton.Click += CancelButton_Click;
         
-        Runner.OutputReceived += Output.Write;
+        //Runner.OutputReceived += Output.Write;
     }
 
 
@@ -82,6 +82,13 @@ public partial class PackageView : UserControl
         {
             var cfg = new BuildConfiguration
             {
+                
+                NoCompile = NoCompileCheckBox.IsChecked == true,
+                NoCompileEditor = NoCompileEditorCheckBox.IsChecked == true,
+                UnversionedCookedContent = UnversionedCookedContentCheckBox.IsChecked == true,
+                CookIncremental = CookIncrementalCheckBox.IsChecked == true,
+                ZenStore = ZenStoreCheckBox.IsChecked == true,
+                
                 ProjectFile = Context.ProjectFile,
 
                 ProjectDirectory =
@@ -184,7 +191,6 @@ public partial class PackageView : UserControl
 
 
             ConfigService.Save(Config);
-
         }
         catch(Exception ex)
         {

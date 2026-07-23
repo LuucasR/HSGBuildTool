@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using FMFCBuildTool.Models;
 
@@ -13,9 +14,39 @@ public static class RunUATBuilder
 
         args.Append($"-project=\"{config.ProjectFile}\" ");
 
+        args.Append("-noP4 ");
         args.Append("-platform=Win64 ");
-
         args.Append($"-clientconfig={config.Configuration} ");
+        args.Append($"-serverconfig={config.Configuration} ");
+
+        args.Append("-installed ");
+        args.Append("-utf8output ");
+
+        var editorExe = Path.Combine(
+            Path.GetDirectoryName(Path.GetDirectoryName(config.RunUAT)!)!,
+            "Binaries",
+            "Win64",
+            "UnrealEditor-Cmd.exe");
+
+        if (File.Exists(editorExe))
+        {
+            args.Append($"-unrealexe=\"{editorExe}\" ");
+        }
+
+        if (config.NoCompile)
+            args.Append("-nocompile ");
+
+        if (config.NoCompileEditor)
+            args.Append("-nocompileeditor ");
+
+        if (config.UnversionedCookedContent)
+            args.Append("-unversionedcookedcontent ");
+
+        if (config.CookIncremental)
+            args.Append("-cookincremental ");
+
+        if (config.ZenStore)
+            args.Append("-zenstore ");
 
         if (config.Build)
             args.Append("-build ");
@@ -32,12 +63,6 @@ public static class RunUATBuilder
         if (config.Package)
             args.Append("-package ");
 
-        if (config.Archive)
-        {
-            args.Append("-archive ");
-            args.Append($"-archivedirectory=\"{config.ArchiveDirectory}\" ");
-        }
-
         if (config.Pak)
             args.Append("-pak ");
 
@@ -51,7 +76,16 @@ public static class RunUATBuilder
                 args.Append($"-map={map} ");
             }
         }
+        
+        if (config.Archive)
+        {
+            if (string.IsNullOrWhiteSpace(config.ArchiveDirectory))
+                throw new InvalidOperationException("Archive directory is empty.");
 
+            args.Append("-archive ");
+            args.Append($"-archivedirectory=\"{config.ArchiveDirectory}\" ");
+        }
+        
         return args.ToString().Trim();
     }
 }

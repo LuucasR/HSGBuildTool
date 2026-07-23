@@ -189,6 +189,23 @@
                     Content="Package"
                     IsChecked="True"/>
 
+                <CheckBox x:Name="NoCompileCheckBox"
+                          Content="No Compile"
+                          IsChecked="True"/>
+
+                <CheckBox x:Name="NoCompileEditorCheckBox"
+                          Content="No Compile Editor"
+                          IsChecked="True"/>
+
+                <CheckBox x:Name="UnversionedCookedContentCheckBox"
+                          Content="Unversioned Cooked Content"
+                          IsChecked="True"/>
+
+                <CheckBox x:Name="CookIncrementalCheckBox"
+                          Content="Cook Incremental"/>
+
+                <CheckBox x:Name="ZenStoreCheckBox"
+                          Content="Zen Store"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1">
