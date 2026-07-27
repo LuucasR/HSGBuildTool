@@ -4,15 +4,17 @@
 
     <Grid Margin="15">
 
-        <TextBox
-            x:Name="OutputTextBox"
-            Background="{StaticResource InputBrush}"
-            Foreground="{StaticResource TextBrush}"
-            IsReadOnly="True"
-            AcceptsReturn="True"
-            TextWrapping="NoWrap"
-            VerticalScrollBarVisibility="Auto"
-            HorizontalScrollBarVisibility="Auto"/>
+        <RichTextBox
+             x:Name="OutputTextBox"
+             IsReadOnly="True"
+             IsDocumentEnabled="False"
+             VerticalScrollBarVisibility="Auto"
+             HorizontalScrollBarVisibility="Auto"
+             BorderThickness="0"
+             Background="#1E1E1E"
+             Foreground="White"
+             FontFamily="Consolas"
+             FontSize="13"/>
 
     </Grid>
 

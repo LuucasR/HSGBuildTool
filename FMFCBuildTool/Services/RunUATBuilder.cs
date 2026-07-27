@@ -53,7 +53,6 @@ public static class RunUATBuilder
         if (config.ZenStore)
         {
             args.Append("-ZenStore ");
-            args.Append("-forcerecook=false ");
         }
         
         if (config.Build)
