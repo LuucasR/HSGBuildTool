@@ -34,7 +34,7 @@ public partial class OutputView : UserControl
             if (!string.IsNullOrWhiteSpace(line))
                 Lines.Add(line);
         }
-
+        FilterComboBox.SelectedIndex = 0;
         RefreshView();
     }
 
@@ -64,6 +64,7 @@ public partial class OutputView : UserControl
 
     private void RefreshView()
     {
+
         OutputTextBox.Document.Blocks.Clear();
 
         foreach (var line in Lines)
