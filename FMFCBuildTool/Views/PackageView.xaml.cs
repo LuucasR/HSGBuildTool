@@ -54,6 +54,20 @@ public partial class PackageView : UserControl
 
             ProjectTextBox.Text =
                 Config.LastProject;
+
+            Context.Maps =
+                MapScanner.Scan(
+                    Config.LastProject);
+
+            AllMaps = Context.Maps;
+
+            MapsListView.ItemsSource =
+                Context.Maps;
+
+            if (Config.ProjectConfigurations.TryGetValue(Config.LastProject, out var saved))
+            {
+                LoadBuildConfiguration(saved);
+            }
         }
 
 
@@ -61,7 +75,123 @@ public partial class PackageView : UserControl
         CancelButton.Click += CancelButton_Click;
         
     }
+private BuildConfiguration CreateBuildConfiguration()
+{
+    var cfg = new BuildConfiguration
+    {
+        Prereqs = PrereqsCheckBox.IsChecked == true,
+        Distribution = DistributionCheckBox.IsChecked == true,
+        CrashReporter = CrashReporterCheckBox.IsChecked == true,
+        Client = ClientCheckBox.IsChecked == true,
+        Server = ServerCheckBox.IsChecked == true,
 
+        FileOpenLog = FileOpenLogCheckBox.IsChecked == true,
+        StdOut = StdOutCheckBox.IsChecked == true,
+        CrashForUAT = CrashForUATCheckBox.IsChecked == true,
+        Unattended = UnattendedCheckBox.IsChecked == true,
+        NoLogTimes = NoLogTimesCheckBox.IsChecked == true,
+
+        NoCompile = NoCompileCheckBox.IsChecked == true,
+        NoCompileEditor = NoCompileEditorCheckBox.IsChecked == true,
+        UnversionedCookedContent = UnversionedCookedContentCheckBox.IsChecked == true,
+        CookIncremental = CookIncrementalCheckBox.IsChecked == true,
+        ZenStore = ZenStoreCheckBox.IsChecked == true,
+
+        Build = BuildCheckBox.IsChecked == true,
+        Cook = CookCheckBox.IsChecked == true,
+        Stage = StageCheckBox.IsChecked == true,
+        Package = PackageCheckBox.IsChecked == true,
+        Archive = ArchiveCheckBox.IsChecked == true,
+        Pak = PakCheckBox.IsChecked == true,
+        IoStore = false,
+        Compressed = CompressedCheckBox.IsChecked == true,
+
+        SkipCookingEditorContent = SkipCookingEditorContentCheckBox.IsChecked == true,
+        FullCook = FullCookRadio.IsChecked == true,
+        UseProjectDefaultMaps = UseProjectDefaultMapsCheckBox.IsChecked == true,
+
+        ProjectFile = Context.ProjectFile,
+        ProjectDirectory = Context.ProjectDirectory,
+        ArchiveDirectory = ArchiveTextBox.Text,
+        RunUAT = UnrealLocator.FindRunUAT(Context.ProjectFile),
+        UnrealEditorCmd = UnrealLocator.FindUnrealEditorCmd(Context.ProjectFile),
+
+        Configuration = ((ComboBoxItem)ConfigurationComboBox.SelectedItem).Content!.ToString()!,
+        CookCultures =
+        [
+            ((ComboBoxItem)CookCultureComboBox.SelectedItem).Content!.ToString()!
+        ]
+    };
+
+    foreach (MapItem item in MapsListView.Items)
+    {
+        if (item.Selected)
+            cfg.Maps.Add(item.RelativePath);
+    }
+
+    return cfg;
+}
+
+private void LoadBuildConfiguration(BuildConfiguration cfg)
+{
+    BuildCheckBox.IsChecked = cfg.Build;
+    CookCheckBox.IsChecked = cfg.Cook;
+    StageCheckBox.IsChecked = cfg.Stage;
+    PackageCheckBox.IsChecked = cfg.Package;
+    ArchiveCheckBox.IsChecked = cfg.Archive;
+    PakCheckBox.IsChecked = cfg.Pak;
+    CompressedCheckBox.IsChecked = cfg.Compressed;
+
+    NoCompileCheckBox.IsChecked = cfg.NoCompile;
+    NoCompileEditorCheckBox.IsChecked = cfg.NoCompileEditor;
+    UnversionedCookedContentCheckBox.IsChecked = cfg.UnversionedCookedContent;
+    CookIncrementalCheckBox.IsChecked = cfg.CookIncremental;
+    ZenStoreCheckBox.IsChecked = cfg.ZenStore;
+    SkipCookingEditorContentCheckBox.IsChecked = cfg.SkipCookingEditorContent;
+
+    PrereqsCheckBox.IsChecked = cfg.Prereqs;
+    DistributionCheckBox.IsChecked = cfg.Distribution;
+    CrashReporterCheckBox.IsChecked = cfg.CrashReporter;
+    ClientCheckBox.IsChecked = cfg.Client;
+    ServerCheckBox.IsChecked = cfg.Server;
+
+    FileOpenLogCheckBox.IsChecked = cfg.FileOpenLog;
+    StdOutCheckBox.IsChecked = cfg.StdOut;
+    CrashForUATCheckBox.IsChecked = cfg.CrashForUAT;
+    UnattendedCheckBox.IsChecked = cfg.Unattended;
+    NoLogTimesCheckBox.IsChecked = cfg.NoLogTimes;
+
+    FullCookRadio.IsChecked = cfg.FullCook;
+    ModifiedCookRadio.IsChecked = !cfg.FullCook;
+
+    UseProjectDefaultMapsCheckBox.IsChecked = cfg.UseProjectDefaultMaps;
+
+    foreach (ComboBoxItem item in ConfigurationComboBox.Items)
+    {
+        if ((string)item.Content == cfg.Configuration)
+        {
+            ConfigurationComboBox.SelectedItem = item;
+            break;
+        }
+    }
+
+    foreach (ComboBoxItem item in CookCultureComboBox.Items)
+    {
+        if (cfg.CookCultures.Count > 0 &&
+            (string)item.Content == cfg.CookCultures[0])
+        {
+            CookCultureComboBox.SelectedItem = item;
+            break;
+        }
+    }
+
+    foreach (var map in AllMaps)
+    {
+        map.Selected = cfg.Maps.Contains(map.RelativePath);
+    }
+
+    MapsListView.Items.Refresh();
+}
 
     private async void BuildButton_Click(object sender, RoutedEventArgs e)
     {
@@ -77,101 +207,8 @@ public partial class PackageView : UserControl
 
         try
         {
-            var cfg = new BuildConfiguration
-            {
-                Prereqs = PrereqsCheckBox.IsChecked == true,
-                Distribution = DistributionCheckBox.IsChecked == true,
-                CrashReporter = CrashReporterCheckBox.IsChecked == true,
-                Client = ClientCheckBox.IsChecked == true,
-                Server = ServerCheckBox.IsChecked == true,
-                FileOpenLog = FileOpenLogCheckBox.IsChecked == true,
-                StdOut = StdOutCheckBox.IsChecked == true,
-                CrashForUAT = CrashForUATCheckBox.IsChecked == true,
-                Unattended = UnattendedCheckBox.IsChecked == true,
-                NoLogTimes = NoLogTimesCheckBox.IsChecked == true,
-                NoCompile = NoCompileCheckBox.IsChecked == true,
-                NoCompileEditor = NoCompileEditorCheckBox.IsChecked == true,
-                UnversionedCookedContent = UnversionedCookedContentCheckBox.IsChecked == true,
-                CookIncremental = CookIncrementalCheckBox.IsChecked == true,
-                ZenStore = ZenStoreCheckBox.IsChecked == true,
-                
-                ProjectFile = Context.ProjectFile,
-
-                ProjectDirectory =
-                    Context.ProjectDirectory,
-
-                ArchiveDirectory =
-                    ArchiveTextBox.Text,
-
-
-                RunUAT =
-                    UnrealLocator.FindRunUAT(
-                        Context.ProjectFile),
-
-
-                Configuration =
-                    ((ComboBoxItem)ConfigurationComboBox.SelectedItem)
-                    .Content!
-                    .ToString()!,
-
-                CookCultures =
-                [
-                    ((ComboBoxItem)CookCultureComboBox.SelectedItem)
-                    .Content!
-                    .ToString()!
-                ],
-                
-                FullCook =
-                    FullCookRadio.IsChecked == true,
-
-
-                Build =
-                    BuildCheckBox.IsChecked == true,
-
-                Cook =
-                    CookCheckBox.IsChecked == true,
-
-                Stage =
-                    StageCheckBox.IsChecked == true,
-
-                Package =
-                    PackageCheckBox.IsChecked == true,
-
-                Archive =
-                    ArchiveCheckBox.IsChecked == true,
-
-                Pak =
-                    PakCheckBox.IsChecked == true,
-
-                Compressed =
-                    CompressedCheckBox.IsChecked == true,
-
-                SkipCookingEditorContent =
-                    SkipCookingEditorContentCheckBox.IsChecked == true,
-                
-                UseProjectDefaultMaps =
-                    UseProjectDefaultMapsCheckBox.IsChecked == true,
-                
-                UnrealEditorCmd =
-                    UnrealLocator.FindUnrealEditorCmd(
-                        Context.ProjectFile),
-            };
-
-
-            if (!cfg.UseProjectDefaultMaps)
-            {
-                foreach(var item in MapsListView.Items)
-                {
-                    if(item is MapItem map && map.Selected)
-                    {
-                        cfg.Maps.Add(
-                            map.RelativePath);
-                    }
-                }
-            }
-
-
-
+            var cfg = CreateBuildConfiguration();
+            
             var args =
                 RunUATBuilder.Build(cfg);
 
@@ -207,7 +244,7 @@ public partial class PackageView : UserControl
             Config.LastProject =
                 cfg.ProjectFile;
 
-
+            Config.ProjectConfigurations[cfg.ProjectFile] = cfg.Clone();
             ConfigService.Save(Config);
         }
         catch(Exception ex)
@@ -294,9 +331,15 @@ public partial class PackageView : UserControl
         MapsListView.ItemsSource =
             Context.Maps;
 
+        if (Config.ProjectConfigurations.TryGetValue(dialog.FileName, out var saved))
+        {
+            LoadBuildConfiguration(saved);
+        }
         
-        Config.LastProject =
-            dialog.FileName;
+        Config.LastProject = dialog.FileName;
+
+        Config.ProjectConfigurations[dialog.FileName] =
+            CreateBuildConfiguration().Clone();
 
         ConfigService.Save(Config);
     }
