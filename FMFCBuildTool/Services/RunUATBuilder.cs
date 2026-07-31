@@ -1,124 +1,118 @@
-using System.IO;
-using System.Text;
+using System.Collections.Generic;
+using System.Linq;
 using FMFCBuildTool.Models;
 
 namespace FMFCBuildTool.Services;
 
+/// <summary>
+/// Turns a <see cref="BuildPreset"/> into a RunUAT BuildCookRun command line.
+/// </summary>
+/// <remarks>
+/// Returns a token list rather than one concatenated string so the Package page can
+/// show the exact command before running it, and so the argument construction can be
+/// unit-tested without launching anything. Each token is already quoted where needed;
+/// <see cref="ToCommandLine"/> just joins them with spaces, preserving the quoting
+/// RunUAT.bat expects.
+/// </remarks>
 public static class RunUATBuilder
 {
-    public static string Build(BuildConfiguration config)
+    /// <summary>
+    /// Problems that would make the build fail or silently produce nothing.
+    /// Lets the page disable BUILD and explain why, instead of throwing on click.
+    /// </summary>
+    public static IReadOnlyList<string> Validate(BuildPreset preset, string projectFile)
     {
-        var args = new StringBuilder();
-        
-        
-        args.Append("BuildCookRun ");
+        var problems = new List<string>();
 
-        args.Append($"-project=\"{config.ProjectFile}\" ");
+        if (!ProjectLoader.IsValidProject(projectFile))
+            problems.Add("Select a valid .uproject file.");
 
-        args.Append("-noP4 ");
-        args.Append("-platform=Win64 ");
-        
-        if (config.CookCultures.Count > 0)
+        if (preset.Archive && string.IsNullOrWhiteSpace(preset.ArchiveDirectory))
+            problems.Add("Archive is enabled but no archive folder is set.");
+
+        if (!preset.Build && !preset.Cook && !preset.Stage && !preset.Package && !preset.Archive)
+            problems.Add("Nothing to do: enable at least one pipeline stage.");
+
+        if (preset.CookCultures.Count == 0)
+            problems.Add("Select at least one cook culture.");
+
+        if (preset.Cook && !preset.UseProjectDefaultMaps && preset.Maps.Count == 0)
+            problems.Add("No maps selected. Either pick maps or enable \"Use project default maps\".");
+
+        return problems;
+    }
+
+    public static IReadOnlyList<string> BuildArguments(BuildPreset preset, string projectFile, EnginePaths engine)
+    {
+        var args = new List<string>
         {
-            args.Append($"-CookCultures={string.Join("+", config.CookCultures)} ");
-            
-        }
-        
-        args.Append($"-clientconfig={config.Configuration} ");
-        args.Append($"-serverconfig={config.Configuration} ");
+            "BuildCookRun",
+            $"-project=\"{projectFile}\"",
+            "-noP4",
+            $"-platform={preset.Platform}"
+        };
 
-        args.Append("-installed ");
-        args.Append("-utf8output ");
+        if (preset.CookCultures.Count > 0)
+            args.Add($"-CookCultures={string.Join("+", preset.CookCultures)}");
 
-        if (!string.IsNullOrWhiteSpace(config.UnrealEditorCmd))
+        args.Add($"-clientconfig={preset.Configuration}");
+        args.Add($"-serverconfig={preset.Configuration}");
+
+        // Only meaningful for a binary engine. Passing it against a source build
+        // (as the old code always did) makes UAT look for prebuilt binaries that
+        // aren't there.
+        if (engine.IsInstalled)
+            args.Add("-installed");
+
+        args.Add("-utf8output");
+
+        if (!string.IsNullOrWhiteSpace(engine.EditorCmd))
+            args.Add($"-unrealexe=\"{engine.EditorCmd}\"");
+
+        AddFlag(args, preset.NoCompile, "-nocompile");
+        AddFlag(args, preset.SkipCookingEditorContent, "-SkipCookingEditorContent");
+        AddFlag(args, preset.NoCompileEditor, "-nocompileeditor");
+        AddFlag(args, preset.UnversionedCookedContent, "-unversionedcookedcontent");
+        AddFlag(args, preset.CookIncremental, "-cookincremental");
+        AddFlag(args, preset.ZenStore, "-ZenStore");
+
+        AddFlag(args, preset.Build, "-build");
+        AddFlag(args, preset.Cook, "-cook");
+        AddFlag(args, preset.FullCook, "-clean");
+        AddFlag(args, preset.Stage, "-stage");
+        AddFlag(args, preset.Package, "-package");
+        AddFlag(args, preset.Pak, "-pak");
+        AddFlag(args, preset.IoStore, "-iostore");
+        AddFlag(args, preset.Prereqs, "-prereqs");
+        AddFlag(args, preset.Distribution, "-distribution");
+        AddFlag(args, preset.CrashReporter, "-crashreporter");
+        AddFlag(args, preset.Server, "-server");
+        AddFlag(args, preset.Client, "-client");
+        AddFlag(args, preset.Compressed, "-compressed");
+
+        AddFlag(args, preset.FileOpenLog, "-fileopenlog");
+        AddFlag(args, preset.StdOut, "-stdout");
+        AddFlag(args, preset.CrashForUAT, "-CrashForUAT");
+        AddFlag(args, preset.Unattended, "-unattended");
+        AddFlag(args, preset.NoLogTimes, "-NoLogTimes");
+
+        if (!preset.UseProjectDefaultMaps && preset.Maps.Count > 0)
+            args.Add($"-map={string.Join("+", preset.Maps)}");
+
+        if (preset.Archive)
         {
-            args.Append($"-unrealexe=\"{config.UnrealEditorCmd}\" ");
+            args.Add("-archive");
+            args.Add($"-archivedirectory=\"{preset.ArchiveDirectory}\"");
         }
 
-        if (config.NoCompile)
-            args.Append("-nocompile ");
+        return args;
+    }
 
-        if (config.SkipCookingEditorContent)
-            args.Append("-SkipCookingEditorContent ");
-        
-        if (config.NoCompileEditor)
-            args.Append("-nocompileeditor ");
-        
-        if (config.UnversionedCookedContent)
-            args.Append("-unversionedcookedcontent ");
+    public static string ToCommandLine(IEnumerable<string> arguments) => string.Join(" ", arguments);
 
-        if (config.CookIncremental)
-            args.Append("-cookincremental ");
-        
-        if (config.ZenStore)
-        {
-            args.Append("-ZenStore ");
-        }
-        
-        if (config.Build)
-            args.Append("-build ");
-
-        if (config.Cook)
-            args.Append("-cook ");
-
-        if (config.FullCook)
-            args.Append("-clean ");
-
-        if (config.Stage)
-            args.Append("-stage ");
-
-        if (config.Package)
-            args.Append("-package ");
-
-        if (config.Pak)
-            args.Append("-pak ");
-
-        if (config.IoStore)
-            args.Append("-iostore ");
-        if (config.Prereqs)
-            args.Append("-prereqs ");
-        
-        if (config.Distribution)
-            args.Append("-distribution ");
-        
-        if (config.CrashReporter)
-            args.Append("-crashreporter ");
-        if (config.Server)
-            args.Append("-server ");
-        if (config.Client)
-            args.Append("-client ");
-        if (config.Compressed)
-            args.Append("-compressed ");
-
-        if (config.FileOpenLog)
-            args.Append("-fileopenlog ");
-
-        if (config.StdOut)
-            args.Append("-stdout ");
-
-        if (config.CrashForUAT)
-            args.Append("-CrashForUAT ");
-
-        if (config.Unattended)
-            args.Append("-unattended ");
-
-        if (config.NoLogTimes)
-            args.Append("-NoLogTimes ");
-        
-        if (!config.UseProjectDefaultMaps && config.Maps.Count > 0)
-        {
-            args.Append($"-map={string.Join("+", config.Maps)} ");
-        }
-        
-        if (config.Archive)
-        {
-            if (string.IsNullOrWhiteSpace(config.ArchiveDirectory))
-                throw new InvalidOperationException("Archive directory is empty.");
-
-            args.Append("-archive ");
-            args.Append($"-archivedirectory=\"{config.ArchiveDirectory}\" ");
-        }
-        
-        return args.ToString().Trim();
+    private static void AddFlag(ICollection<string> args, bool enabled, string flag)
+    {
+        if (enabled)
+            args.Add(flag);
     }
 }

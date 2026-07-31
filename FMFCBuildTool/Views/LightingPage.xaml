@@ -1,0 +1,123 @@
+<UserControl x:Class="FMFCBuildTool.Views.LightingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:FMFCBuildTool.Views">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Style="{StaticResource Card}" Margin="20,18,20,0" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Style="{StaticResource H2}" Text="Static lighting"/>
+                    <TextBlock Style="{StaticResource Caption}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap"
+                               MaxWidth="720"
+                               HorizontalAlignment="Left"
+                               Text="Runs ResavePackages -buildlighting once per selected map. This only produces work on projects that bake lighting — on a Lumen-only project each run finishes immediately with nothing to do."/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Quality"/>
+                    <ComboBox Width="140"
+                              ItemsSource="{Binding Qualities}"
+                              SelectedItem="{Binding Quality}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="20,14,20,14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="MAPS"/>
+
+                <views:MapListControl Grid.Row="1" DataContext="{Binding MapSelection}"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Border}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Style="{StaticResource MonoTextBox}"
+                             MaxHeight="72"
+                             Text="{Binding CommandPreview, Mode=OneWay}"/>
+
+                    <Button Grid.Column="1"
+                            Content="Copy"
+                            Width="82"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Top"
+                            Command="{Binding CopyCommandLineCommand}"/>
+                </Grid>
+
+                <Border Grid.Row="1"
+                        Background="{StaticResource SurfaceAlt}"
+                        BorderBrush="{StaticResource Warning}"
+                        BorderThickness="1,0,0,0"
+                        Padding="10,6"
+                        Margin="0,0,0,10"
+                        Visibility="{Binding HasValidationMessage, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding ValidationMessage}"
+                               Foreground="{StaticResource Warning}"
+                               TextWrapping="Wrap"/>
+                </Border>
+
+                <ProgressBar Grid.Row="2"
+                             Margin="0,0,0,10"
+                             Value="{Binding Progress, Mode=OneWay}"
+                             Maximum="100"
+                             Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}"/>
+
+                <Grid Grid.Row="3">
+                    <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel"
+                                Width="110"
+                                Height="34"
+                                Margin="0,0,10,0"
+                                Command="{Binding CancelCommand}"/>
+
+                        <Button Style="{StaticResource PrimaryButton}"
+                                Content="{Binding RunButtonText}"
+                                MinWidth="200"
+                                Height="34"
+                                FontSize="14"
+                                Command="{Binding RunCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

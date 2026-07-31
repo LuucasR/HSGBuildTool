@@ -1,166 +1,325 @@
 ﻿<Window x:Class="FMFCBuildTool.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:FMFCBuildTool.Views"
+        xmlns:vm="clr-namespace:FMFCBuildTool.ViewModels"
         Title="FMFC Build Tool"
-        Width="1500"
+        Width="1440"
         Height="900"
-        MinWidth="1200"
-        MinHeight="800"
+        MinWidth="1020"
+        MinHeight="680"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
 
-    <DockPanel Background="{StaticResource BackgroundBrush}">
+        <!-- Page host: view-model type decides which UserControl renders. -->
+        <DataTemplate DataType="{x:Type vm:PackageViewModel}">
+            <views:PackageView/>
+        </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:NavigationViewModel}">
+            <views:CommandletPage/>
+        </DataTemplate>
 
-        <!-- TOP BAR -->
+        <DataTemplate DataType="{x:Type vm:LightingViewModel}">
+            <views:LightingPage/>
+        </DataTemplate>
 
-        <Border DockPanel.Dock="Top"
-                Height="55"
-                Background="{StaticResource PanelBrush}">
+        <DataTemplate DataType="{x:Type vm:OutputViewModel}">
+            <views:OutputView/>
+        </DataTemplate>
 
-            <Grid Margin="15,0">
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
 
+        <!--
+            Rail item: an accent bar marks the active page. Replaces six identically
+            styled accent-blue buttons where nothing indicated where you were.
+        -->
+        <Style x:Key="RailItem" TargetType="RadioButton">
+            <Setter Property="GroupName" Value="Rail"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Root"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="2,0,0,0"
+                                CornerRadius="0,4,4,0"
+                                Margin="0,1">
+                            <ContentPresenter Margin="14,0,10,0" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceHover}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceAlt}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RailIcon" TargetType="Path">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+            <Setter Property="StrokeThickness" Value="1.3"/>
+            <Setter Property="StrokeLineJoin" Value="Round"/>
+            <Setter Property="StrokeStartLineCap" Value="Round"/>
+            <Setter Property="StrokeEndLineCap" Value="Round"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="46"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ==================================================== TITLE BAR -->
+
+        <Border Grid.Row="0"
+                Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Border}"
+                BorderThickness="0,0,0,1">
+
+            <Grid Margin="16,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-
-                <StackPanel Orientation="Horizontal"
-                            VerticalAlignment="Center">
-
-                    <TextBlock
-                        Text="FMFC Build Tool"
-                        FontSize="22"
-                        FontWeight="Bold"
-                        Foreground="{StaticResource PrimaryBrush}"/>
-
-
-                    <TextBlock
-                        Margin="15,4,0,0"
-                        Text="v2"
-                        Foreground="{StaticResource SecondaryTextBrush}"/>
-
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
+                    <TextBlock Text="FMFC" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                    <TextBlock Text="Build Tool" FontSize="15" Margin="6,0,0,0" Foreground="{StaticResource Text}"/>
                 </StackPanel>
 
+                <!--
+                    Project switcher lives in the shell because the project is global state.
+                    It used to be a TextBox inside Package plus a read-only copy inside
+                    Navigation, which is how the two pages drifted apart.
+                -->
+                <Grid Grid.Column="1" VerticalAlignment="Center" MaxWidth="720" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
+                    <ComboBox ItemsSource="{Binding RecentProjects}"
+                              SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
+                              ToolTip="{Binding Context.ProjectFile}"
+                              Margin="0,0,8,0"/>
 
-                <TextBlock
-                    Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Foreground="{StaticResource SecondaryTextBrush}"
-                    Text="Heroic Spirit Games"/>
+                    <Button Grid.Column="1"
+                            Content="Open&#8230;"
+                            Command="{Binding BrowseProjectCommand}"/>
+                </Grid>
 
+                <!-- Engine badge: says which engine will actually be used, and why. -->
+                <Border Grid.Column="2"
+                        Background="{StaticResource SurfaceAlt}"
+                        BorderBrush="{StaticResource Border}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource ControlRadius}"
+                        Padding="10,0"
+                        Height="28"
+                        Margin="16,0,12,0"
+                        VerticalAlignment="Center">
+
+                    <Border.ToolTip>
+                        <TextBlock TextWrapping="Wrap">
+                            <Run Text="{Binding Context.EngineLabel, Mode=OneWay}"/>
+                            <LineBreak/>
+                            <Run Text="{Binding Context.EngineError, Mode=OneWay}"/>
+                        </TextBlock>
+                    </Border.ToolTip>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="7" Height="7" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="{StaticResource Danger}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Context.HasEngine}" Value="True">
+                                            <Setter Property="Fill" Value="{StaticResource Success}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+
+                        <TextBlock Text="{Binding Context.EngineLabel}"
+                                   Foreground="{StaticResource TextMuted}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding BusyDescription}"
+                               Style="{StaticResource Caption}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <TextBlock Text="Heroic Spirit Games"
+                               Style="{StaticResource Caption}"
+                               Foreground="{StaticResource TextDim}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
-
         </Border>
 
+        <!-- ==================================================== BODY -->
 
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="196"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- OUTPUT -->
+            <!-- RAIL -->
 
-        <GroupBox
-            x:Name="SmallOutputPanel"
-            DockPanel.Dock="Bottom"
-            Height="220"
-            Margin="10"
-            Header="Output">
+            <Border Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource Border}"
+                    BorderThickness="0,0,1,0">
 
-            <TextBox
-                x:Name="OutputTextBox"
-                Background="{StaticResource InputBrush}"
-                Foreground="{StaticResource TextBrush}"
-                IsReadOnly="True"
-                TextWrapping="Wrap"
-                AcceptsReturn="True"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Auto"/>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-        </GroupBox>
+                    <StackPanel Margin="0,12,8,0">
 
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="BUILD" Margin="16,0,0,6"/>
 
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Package"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Package}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M8 1.2 L14.5 4.6 L14.5 11.4 L8 14.8 L1.5 11.4 L1.5 4.6 Z M1.5 4.6 L8 8 L14.5 4.6 M8 8 L8 14.8"/>
+                                <TextBlock Text="Package" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
-        <!-- LEFT MENU -->
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Navigation"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Navigation}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M8 1.5 L13.5 14.5 L8 11 L2.5 14.5 Z"/>
+                                <TextBlock Text="Navigation" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
-        <Border DockPanel.Dock="Left"
-                Width="240"
-                Background="{StaticResource PanelBrush}">
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Lighting"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Lighting}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M8 5 A3 3 0 1 0 8.01 5 Z M8 1 V2.6 M8 13.4 V15 M1 8 H2.6 M13.4 8 H15 M3.1 3.1 L4.2 4.2 M11.8 11.8 L12.9 12.9 M12.9 3.1 L11.8 4.2 M4.2 11.8 L3.1 12.9"/>
+                                <TextBlock Text="Lighting" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
+                        <Separator Margin="16,12,4,10"/>
 
-            <StackPanel Margin="15">
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="TOOLS" Margin="16,0,0,6"/>
 
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Output"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Output}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}" Data="M2 4 H14 M2 8 H10 M2 12 H12"/>
+                                <TextBlock Text="Output" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
-                <Button
-                    Height="45"
-                    Margin="0,0,0,10"
-                    Content="📦 Package"
-                    Click="Package_Click"/>
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Settings"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Settings}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M2 5 H14 M2 11 H14 M5.5 5 A1.6 1.6 0 1 0 5.51 5 Z M10.5 11 A1.6 1.6 0 1 0 10.51 11 Z"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
+                    </StackPanel>
 
+                    <!-- Footer: what is loaded, always visible. -->
+                    <StackPanel Grid.Row="1" Margin="16,0,16,14">
+                        <Separator Margin="0,0,0,10"/>
 
-                <Button
-                    Height="45"
-                    Margin="0,0,0,10"
-                    Content="🧭 Navigation"
-                    Click="Navigation_Click"/>
+                        <TextBlock Text="{Binding Context.ProjectName}"
+                                   Foreground="{StaticResource Text}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Context.ProjectFile}"/>
 
+                        <TextBlock Text="{Binding Context.EngineLabel}"
+                                   Style="{StaticResource Caption}"
+                                   Foreground="{StaticResource TextDim}"
+                                   Margin="0,2,0,0"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
+            <!-- CONTENT + LOG DOCK -->
 
-                <Button
-                    Height="45"
-                    Margin="0,0,0,10"
-                    Content="🏗 Build HLOD"/>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="200"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="{Binding LogDockRow, Mode=TwoWay}" MinHeight="0"/>
+                </Grid.RowDefinitions>
 
+                <ContentControl Content="{Binding CurrentPage}"/>
 
+                <!--
+                    The dock collapses while the full Output page is showing, so the same
+                    log isn't drawn twice. Its height is bound two-way and persisted.
+                -->
+                <GridSplitter Grid.Row="1"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"
+                              Visibility="{Binding IsLogDockVisible, Converter={StaticResource BoolToVisibility}}"/>
 
-                <Button
-                    Height="45"
-                    Margin="0,0,0,10"
-                    Content="💡 Lighting"/>
-
-                <Button
-                    Height="45"
-                    Margin="0,0,0,25"
-                    Content="⚙ Settings"/>
-                
-                <Button
-                    Height="45"
-                    Margin="0,0,0,10"
-                    Content="📝 Output"
-                    Click="Output_Click"/>
-                
-
-                <Separator/>
-
-
-
-                <TextBlock
-                    Margin="0,20,0,5"
-                    Foreground="{StaticResource TextBrush}"
-                    FontWeight="Bold"
-                    Text="Recent Projects"/>
-
-
-
-                <ListBox
-                    Height="250"
-                    Background="{StaticResource CardBrush}"/>
-
-
-            </StackPanel>
-
-
-        </Border>
-
-
-
-        <!-- MAIN CONTENT -->
-
-        <ContentControl
-            x:Name="MainContent"/>
-
-
-    </DockPanel>
-
-
+                <Border Grid.Row="2"
+                        Background="{StaticResource Surface}"
+                        BorderBrush="{StaticResource Border}"
+                        BorderThickness="0,1,0,0"
+                        Visibility="{Binding IsLogDockVisible, Converter={StaticResource BoolToVisibility}}">
+                    <views:LogPanel DataContext="{Binding LogViewModel}"/>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
 </Window>

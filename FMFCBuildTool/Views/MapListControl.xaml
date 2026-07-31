@@ -1,0 +1,102 @@
+﻿<UserControl x:Class="FMFCBuildTool.Views.MapListControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Shared by Package, Navigation and Lighting. DataContext is a MapSelectionViewModel.
+        The three pages used to carry their own copy of this markup and their own
+        select-all / deselect-all handlers.
+    -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- TOOLBAR -->
+
+        <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!--
+                MinWidth is load-bearing: HorizontalAlignment=Left sizes the box to its
+                content, so an empty search field would otherwise collapse to nothing.
+            -->
+            <TextBox MinWidth="260"
+                     MaxWidth="320"
+                     HorizontalAlignment="Left"
+                     Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=150}"
+                     ToolTip="Filter the list. Filtering never changes which maps are selected."/>
+
+            <!--
+                Always-visible count. With a search active there was previously no way to
+                tell how many maps would actually go into the build.
+            -->
+            <TextBlock Grid.Column="1"
+                       Style="{StaticResource Caption}"
+                       VerticalAlignment="Center"
+                       Margin="12,0"
+                       Text="{Binding SelectionSummary}"/>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button Content="All" Width="56" Margin="0,0,6,0" Command="{Binding SelectAllCommand}"/>
+                <Button Content="None" Width="56" Margin="0,0,6,0" Command="{Binding SelectNoneCommand}"/>
+                <Button Content="Invert" Width="60" Command="{Binding InvertCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- LIST -->
+
+        <Grid Grid.Row="1">
+
+            <ListView ItemsSource="{Binding Maps}"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling">
+
+                <ListView.View>
+                    <GridView>
+
+                        <GridViewColumn Width="36">
+                            <GridViewColumn.Header>
+                                <TextBlock Text=""/>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"
+                                              Margin="0"
+                                              HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Map" Width="240" DisplayMemberBinding="{Binding Name}"/>
+
+                        <GridViewColumn Header="Package path" Width="640">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RelativePath}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding FullPath}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <TextBlock Text="Scanning Content for .umap files&#8230;"
+                       Foreground="{StaticResource TextDim}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}"/>
+
+        </Grid>
+    </Grid>
+</UserControl>

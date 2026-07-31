@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace FMFCBuildTool.Views;
 
-public partial class OutputView : UserControl
+public partial class SettingsView : UserControl
 {
-    public OutputView()
+    public SettingsView()
     {
         InitializeComponent();
     }

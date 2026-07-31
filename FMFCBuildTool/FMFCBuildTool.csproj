@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
@@ -6,11 +6,12 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
+        <AssemblyTitle>FMFC Build Tool</AssemblyTitle>
+        <Company>Heroic Spirit Games</Company>
+        <Version>2.0.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
-        <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
         <PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
     </ItemGroup>
 

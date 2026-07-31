@@ -1,62 +1,13 @@
 <UserControl x:Class="FMFCBuildTool.Views.OutputView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:FMFCBuildTool.Views">
 
-    <Grid Margin="5">
-
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <ComboBox x:Name="FilterComboBox"
-                  Grid.Row="0"
-                  Width="170"
-                  HorizontalAlignment="Left"
-                  Background="#2D2D30"
-                  Foreground="#2D2D30"
-                  BorderBrush="#555555"
-                  SelectionChanged="FilterComboBox_SelectionChanged">
-
-            <ComboBox.ItemContainerStyle>
-                <Style TargetType="ComboBoxItem">
-                    <Setter Property="Foreground" Value="Gray"/>
-                    <Setter Property="Background" Value="#2D2D30"/>
-                    <Setter Property="Padding" Value="6,4"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-
-                    <Style.Triggers>
-
-                        <Trigger Property="IsHighlighted" Value="True">
-                            <Setter Property="Background" Value="#3E6DB5"/>
-                            <Setter Property="Foreground" Value="black"/>
-                        </Trigger>
-
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#007ACC"/>
-                            <Setter Property="Foreground" Value="black"/>
-                        </Trigger>
-
-                    </Style.Triggers>
-                </Style>
-            </ComboBox.ItemContainerStyle>
-
-            <ComboBoxItem Content="📜 All Logs"/>
-            <ComboBoxItem Content="⚠ Warnings"/>
-            <ComboBoxItem Content="❌ Errors"/>
-
-        </ComboBox>
-
-        <RichTextBox x:Name="OutputTextBox"
-                     Grid.Row="1"
-                     Margin="0,8,0,0"
-                     IsReadOnly="True"
-                     Background="#1E1E1E"
-                     Foreground="WhiteSmoke"
-                     BorderBrush="#444444"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"/>
-
-    </Grid>
+    <!--
+        The full-screen log is the same control and the same view-model as the bottom
+        dock. Previously these were two separate renderers of the same stream with
+        different colouring rules and different filters.
+    -->
+    <views:LogPanel/>
 
 </UserControl>
