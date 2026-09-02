@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using FMFCBuildTool.Models;
 using FMFCBuildTool.Services;
 
@@ -17,15 +16,23 @@ public sealed class LightingViewModel : CommandletPageViewModel
 {
     private string _quality = "Production";
 
-    public LightingViewModel(BuildContext context, ProcessRunner runner, OutputService output, AppConfig config)
-        : base(context, runner, output, config)
+    public LightingViewModel(
+        BuildContext context,
+        ProcessRunner runner,
+        OutputService output,
+        AppConfig config,
+        BuildHistoryService history)
+        : base(context, runner, output, config, history)
     {
     }
+
+    public override string Kind => "lighting";
 
     public override string RunButtonText => "BUILD LIGHTING";
 
     public IReadOnlyList<string> Qualities => LightingBuilder.Qualities;
 
+    /// <summary>Part of the preset: "Preview for iteration" and "Production" are two presets.</summary>
     public string Quality
     {
         get => _quality;
@@ -34,15 +41,18 @@ public sealed class LightingViewModel : CommandletPageViewModel
             if (!SetProperty(ref _quality, value))
                 return;
 
+            ActivePreset.Quality = value;
+
+            // Also kept on the settings for the pre-preset config format.
             Settings.LightingQuality = value;
 
             Refresh();
         }
     }
 
-    protected override string SessionLabel => "lighting";
-
     protected override string ActionName => "Lighting build";
+
+    protected override string HistoryDetail => Quality;
 
     protected override IReadOnlyList<string> ArgumentsFor(string map)
         => LightingBuilder.BuildArguments(Context.ProjectFile, map, Quality);
@@ -50,15 +60,14 @@ public sealed class LightingViewModel : CommandletPageViewModel
     protected override IReadOnlyList<string> ValidateInputs(IReadOnlyList<string> maps)
         => LightingBuilder.Validate(Context.ProjectFile, maps, Quality);
 
-    protected override IReadOnlyList<string> ReadSavedSelection(ProjectSettings settings)
+    protected override void OnPresetApplied(CommandletPreset preset)
     {
-        // Restore the saved quality alongside the map selection.
-        if (LightingBuilder.Qualities.Contains(settings.LightingQuality))
-            SetProperty(ref _quality, settings.LightingQuality, nameof(Quality));
-
-        return settings.LightingMaps;
+        if (LightingBuilder.Qualities.Contains(preset.Quality))
+            SetProperty(ref _quality, preset.Quality, nameof(Quality));
     }
 
-    protected override void WriteSelection(ProjectSettings settings, IReadOnlyList<string> maps)
-        => settings.LightingMaps = maps.ToList();
+    protected override void CaptureIntoPreset(CommandletPreset preset)
+    {
+        preset.Quality = Quality;
+    }
 }

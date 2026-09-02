@@ -103,6 +103,21 @@ public sealed class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>Sound and taskbar flash when a build ends and the window is not focused.</summary>
+    public bool NotifyOnFinish
+    {
+        get => _config.NotifyOnFinish;
+        set
+        {
+            if (_config.NotifyOnFinish == value)
+                return;
+
+            _config.NotifyOnFinish = value;
+
+            OnPropertyChanged();
+        }
+    }
+
     public IReadOnlyList<int> RetentionOptions { get; } = new[] { 3, 7, 14, 30, 90 };
 
     public int LogRetentionDays

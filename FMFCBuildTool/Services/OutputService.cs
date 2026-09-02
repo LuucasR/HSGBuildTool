@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using FMFCBuildTool.Models;
@@ -26,6 +27,7 @@ public sealed class OutputService : IDisposable
     private readonly string _logDirectory;
 
     private StreamWriter? _writer;
+    private bool _sessionActive;
 
     public OutputService(string logDirectory)
     {
@@ -38,14 +40,42 @@ public sealed class OutputService : IDisposable
     /// <summary>History was cleared or trimmed; consumers must rebuild from <see cref="Snapshot"/>.</summary>
     public event Action? Reset;
 
+    /// <summary>
+    /// A build session opened or closed. These bracket one <em>logical</em> build, which is
+    /// what the shell's status bar needs to time: <see cref="ProcessRunner.RunningChanged"/>
+    /// fires once per process, and a navigation build spawns one process per map.
+    /// </summary>
+    public event Action? SessionStarted;
+
+    public event Action? SessionEnded;
+
     public int TotalCount { get; private set; }
 
     public int WarningCount { get; private set; }
 
     public int ErrorCount { get; private set; }
 
+    /// <summary>Where the per-run log files are written. Created on demand.</summary>
+    public string LogDirectory => _logDirectory;
+
     /// <summary>Full path of the log file for the current run, or null when no run is active.</summary>
     public string? CurrentLogFile { get; private set; }
+
+    /// <summary>When the current session began, or null when no session is active.</summary>
+    public DateTime? SessionStartedAt { get; private set; }
+
+    public bool IsSessionActive => _sessionActive;
+
+    /// <summary>
+    /// Warnings and errors in the current session alone. The cumulative counts above run
+    /// for the life of the app, which is the wrong number to file against one build.
+    /// </summary>
+    public int SessionWarnings { get; private set; }
+
+    public int SessionErrors { get; private set; }
+
+    /// <summary>Branch and commit the current session was built from, when known.</summary>
+    public GitInfo.Result SessionGit { get; private set; }
 
     public IReadOnlyList<LogEntry> Snapshot()
     {
@@ -76,11 +106,16 @@ public sealed class OutputService : IDisposable
 
     /// <summary>
     /// Opens a fresh log file for a run. <paramref name="label"/> identifies the kind of
-    /// build ("package", "nav", "lighting") in the file name.
+    /// build ("package", "nav", "lighting") in the file name. <paramref name="projectFile"/>
+    /// is optional and only used to stamp the log with the commit being built.
     /// </summary>
-    public void BeginSession(string label, string projectName)
+    public void BeginSession(string label, string projectName, string projectFile = "")
     {
         EndSession();
+
+        SessionWarnings = 0;
+        SessionErrors = 0;
+        SessionGit = string.IsNullOrEmpty(projectFile) ? default : GitInfo.Read(projectFile);
 
         try
         {
@@ -107,6 +142,17 @@ public sealed class OutputService : IDisposable
                 Category = "FMFC"
             });
         }
+
+        // The session is open whether or not the file could be created — a build with no
+        // on-disk copy is still a build, and the status bar still has to time it.
+        SessionStartedAt = DateTime.Now;
+        _sessionActive = true;
+
+        // Stamped first, so months later the log says which commit produced this build.
+        if (SessionGit.HasValue)
+            WriteTool($"Source: {SessionGit.Label}");
+
+        SessionStarted?.Invoke();
     }
 
     public void EndSession()
@@ -115,6 +161,58 @@ public sealed class OutputService : IDisposable
         {
             _writer?.Dispose();
             _writer = null;
+        }
+
+        if (!_sessionActive)
+            return;
+
+        _sessionActive = false;
+
+        SessionEnded?.Invoke();
+    }
+
+    /// <summary>
+    /// Opens the current run's log in the shell, falling back to the folder when there is
+    /// no log yet (nothing has been built) or the file has since been pruned.
+    /// </summary>
+    public void OpenCurrentLogFile()
+    {
+        var path = CurrentLogFile;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            OpenLogFolder();
+            return;
+        }
+
+        Launch(path);
+    }
+
+    /// <summary>Opens the log folder, creating it first so this works before any build.</summary>
+    public void OpenLogFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(_logDirectory);
+        }
+        catch (Exception ex)
+        {
+            WriteTool($"Could not create {_logDirectory}: {ex.Message}", LogSeverity.Warning);
+            return;
+        }
+
+        Launch(_logDirectory);
+    }
+
+    private void Launch(string target)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            WriteTool($"Could not open {target}: {ex.Message}", LogSeverity.Warning);
         }
     }
 
@@ -154,9 +252,19 @@ public sealed class OutputService : IDisposable
             TotalCount++;
 
             if (entry.Severity == LogSeverity.Warning)
+            {
                 WarningCount++;
+
+                if (_sessionActive)
+                    SessionWarnings++;
+            }
             else if (entry.Severity == LogSeverity.Error)
+            {
                 ErrorCount++;
+
+                if (_sessionActive)
+                    SessionErrors++;
+            }
 
             if (_entries.Count > MaxEntries)
             {

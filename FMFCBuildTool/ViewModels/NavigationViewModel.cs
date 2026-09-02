@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using FMFCBuildTool.Models;
 using FMFCBuildTool.Services;
 
@@ -11,14 +10,19 @@ namespace FMFCBuildTool.ViewModels;
 /// </summary>
 public sealed class NavigationViewModel : CommandletPageViewModel
 {
-    public NavigationViewModel(BuildContext context, ProcessRunner runner, OutputService output, AppConfig config)
-        : base(context, runner, output, config)
+    public NavigationViewModel(
+        BuildContext context,
+        ProcessRunner runner,
+        OutputService output,
+        AppConfig config,
+        BuildHistoryService history)
+        : base(context, runner, output, config, history)
     {
     }
 
-    public override string RunButtonText => "BUILD NAVIGATION";
+    public override string Kind => "nav";
 
-    protected override string SessionLabel => "nav";
+    public override string RunButtonText => "BUILD NAVIGATION";
 
     protected override string ActionName => "Navigation build";
 
@@ -27,10 +31,4 @@ public sealed class NavigationViewModel : CommandletPageViewModel
 
     protected override IReadOnlyList<string> ValidateInputs(IReadOnlyList<string> maps)
         => NavigationBuilder.Validate(Context.ProjectFile, maps);
-
-    protected override IReadOnlyList<string> ReadSavedSelection(ProjectSettings settings)
-        => settings.NavigationMaps;
-
-    protected override void WriteSelection(ProjectSettings settings, IReadOnlyList<string> maps)
-        => settings.NavigationMaps = maps.ToList();
 }

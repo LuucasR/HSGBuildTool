@@ -1,9 +1,11 @@
 ﻿<UserControl x:Class="FMFCBuildTool.Views.MapListControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Style="{StaticResource AppControl}">
 
     <!--
         Shared by Package, Navigation and Lighting. DataContext is a MapSelectionViewModel.
+        AppControl rather than AppPage: this sits inside a card and must not paint over it.
         The three pages used to carry their own copy of this markup and their own
         select-all / deselect-all handlers.
     -->

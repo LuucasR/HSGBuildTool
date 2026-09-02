@@ -1,0 +1,46 @@
+<UserControl x:Class="FMFCBuildTool.Views.PresetPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Style="{StaticResource AppControl}">
+
+    <!--
+        Preset row for the commandlet pages. Package has had named presets from the start;
+        Navigation and Lighting kept one implicit selection, so "the four combat maps" and
+        "everything" could not both exist. Same control shape as Package's preset card, so
+        the three pages behave the same way.
+
+        DataContext is a CommandletPageViewModel.
+    -->
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Style="{StaticResource FieldLabel}" Text="Preset"/>
+
+        <!--
+            An explicit ItemTemplate rather than DisplayMemberPath: the custom ComboBox
+            template renders the closed box through SelectionBoxItemTemplate, which
+            DisplayMemberPath does not populate.
+        -->
+        <ComboBox Grid.Column="1"
+                  ItemsSource="{Binding Presets}"
+                  SelectedItem="{Binding SelectedPreset}"
+                  ToolTip="Presets are saved per project">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Name}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+            <Button Content="Save" Width="66" Margin="0,0,6,0" Command="{Binding SavePresetCommand}"/>
+            <Button Content="Save as&#8230;" Width="86" Margin="0,0,6,0" Command="{Binding SaveAsPresetCommand}"/>
+            <Button Style="{StaticResource DangerButton}" Content="Delete" Width="66" Command="{Binding DeletePresetCommand}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

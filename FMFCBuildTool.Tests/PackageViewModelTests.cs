@@ -33,7 +33,7 @@ public class PackageViewModelTests : IDisposable
     }
 
     private PackageViewModel Create(AppConfig config, BuildContext context)
-        => new(context, new ProcessRunner(), _output, config);
+        => new(context, new ProcessRunner(), _output, config, new BuildHistoryService(config));
 
     /// <summary>
     /// Mirrors what MainViewModel does when a project is opened: the context changes

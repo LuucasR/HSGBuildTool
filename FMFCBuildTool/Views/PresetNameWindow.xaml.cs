@@ -14,6 +14,21 @@ public partial class PresetNameWindow : Window
 
     public string PresetName { get; private set; } = "";
 
+    /// <summary>
+    /// Asks for a preset name, or null if the user backs out. Lives here rather than in a
+    /// view-model so that Package and the two commandlet pages, which now all have named
+    /// presets, share one dialog instead of three copies of the same six lines.
+    /// </summary>
+    public static string? Prompt()
+    {
+        var dialog = new PresetNameWindow
+        {
+            Owner = Application.Current?.MainWindow
+        };
+
+        return dialog.ShowDialog() == true ? dialog.PresetName : null;
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e) => TryAccept();
 
     private void NameTextBox_KeyDown(object sender, KeyEventArgs e)

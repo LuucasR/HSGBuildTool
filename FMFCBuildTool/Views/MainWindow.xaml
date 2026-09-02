@@ -8,7 +8,27 @@
         Height="900"
         MinWidth="1020"
         MinHeight="680"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Style="{StaticResource AppWindow}">
+
+    <!--
+        Progress on the taskbar button. In a twenty-minute cook this is the thing actually
+        being watched — the window itself is behind the editor.
+    -->
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo ProgressState="{Binding TaskbarProgressState}"
+                         ProgressValue="{Binding TaskbarProgressValue}"/>
+    </Window.TaskbarItemInfo>
+
+    <Window.InputBindings>
+        <!-- Walks the log's warnings and errors, the way a compiler error list does. -->
+        <KeyBinding Key="F8" Command="{Binding LogViewModel.NextIssueCommand}"/>
+        <KeyBinding Key="F8" Modifiers="Shift" Command="{Binding LogViewModel.PreviousIssueCommand}"/>
+        <KeyBinding Key="F8" Modifiers="Control" Command="{Binding LogViewModel.ToggleIssuesCommand}"/>
+
+        <KeyBinding Key="B" Modifiers="Control" Command="{Binding CurrentPage.RunCommand}"/>
+        <KeyBinding Key="OemPeriod" Modifiers="Control" Command="{Binding StopCommand}"/>
+    </Window.InputBindings>
 
     <Window.Resources>
 
@@ -25,8 +45,16 @@
             <views:LightingPage/>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:BuildQueueViewModel}">
+            <views:QueueView/>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:OutputViewModel}">
             <views:OutputView/>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <views:HistoryView/>
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
@@ -93,6 +121,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="46"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="28"/>
         </Grid.RowDefinitions>
 
         <!-- ==================================================== TITLE BAR -->
@@ -175,18 +204,13 @@
                     </StackPanel>
                 </Border>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding BusyDescription}"
-                               Style="{StaticResource Caption}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"
-                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
-
-                    <TextBlock Text="Heroic Spirit Games"
-                               Style="{StaticResource Caption}"
-                               Foreground="{StaticResource TextDim}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
+                <!-- What is running moved down to the status bar, which is visible from
+                     every page and can also stop it. -->
+                <TextBlock Grid.Column="3"
+                           Text="Heroic Spirit Games"
+                           Style="{StaticResource Caption}"
+                           Foreground="{StaticResource TextDim}"
+                           VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
@@ -247,6 +271,19 @@
                             </StackPanel>
                         </RadioButton>
 
+                        <!-- The runner is single-flight by design, so chaining is the only
+                             way to leave three builds going and walk away. -->
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Queue"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Queue}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M2 4 H14 M2 8 H14 M2 12 H10 M12.5 10.5 L15 12 L12.5 13.5 Z"/>
+                                <TextBlock Text="Queue" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
                         <Separator Margin="16,12,4,10"/>
 
                         <TextBlock Style="{StaticResource SectionLabel}" Text="TOOLS" Margin="16,0,0,6"/>
@@ -258,6 +295,17 @@
                             <StackPanel Orientation="Horizontal">
                                 <Path Style="{StaticResource RailIcon}" Data="M2 4 H14 M2 8 H10 M2 12 H12"/>
                                 <TextBlock Text="Output" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="History"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=History}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M8 2.2 A5.8 5.8 0 1 0 8.01 2.2 Z M8 4.8 V8.2 L10.4 9.6"/>
+                                <TextBlock Text="History" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
 
@@ -295,8 +343,15 @@
             <!-- CONTENT + LOG DOCK -->
 
             <Grid Grid.Column="1">
+                <!--
+                    The page floor is 430, not 200. A build page spends about 240 on its
+                    header and action bar before it draws anything, so with a dock dragged
+                    tall — and the dock height is persisted across sessions — the map list
+                    was squeezed down to its own "MAPS" label and the page became unusable
+                    until you found the splitter. 430 leaves the list a workable ~170.
+                -->
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="200"/>
+                    <RowDefinition Height="*" MinHeight="430"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="{Binding LogDockRow, Mode=TwoWay}" MinHeight="0"/>
                 </Grid.RowDefinitions>
@@ -321,5 +376,114 @@
                 </Border>
             </Grid>
         </Grid>
+
+        <!-- ==================================================== STATUS BAR -->
+
+        <!--
+            Visible from every page: what is building, for how long, how many errors so
+            far, and a Stop. Previously the only indication that a build was running was a
+            line of caption text in the title bar, and the only way to stop it was to
+            navigate back to the page that had started it.
+        -->
+
+        <Border Grid.Row="2"
+                Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Border}"
+                BorderThickness="0,1,0,0">
+
+            <Grid Margin="16,0,10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Pulses only while a build is in flight, so idle is unmistakably idle. -->
+                    <Ellipse x:Name="StatusDot" Width="7" Height="7" Margin="0,0,9,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{StaticResource TextDim}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSessionRunning}" Value="True">
+                                        <Setter Property="Fill" Value="{StaticResource Running}"/>
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard x:Name="PulseStoryboard">
+                                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     From="1.0"
+                                                                     To="0.25"
+                                                                     Duration="0:0:0.9"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="PulseStoryboard"/>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+
+                    <TextBlock Text="{Binding StatusSummary}"
+                               Style="{StaticResource Caption}"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="460"/>
+
+                    <TextBlock Text="{Binding SessionElapsedText}"
+                               FontFamily="{StaticResource MonoFont}"
+                               FontSize="{StaticResource FontSizeCaption}"
+                               Foreground="{StaticResource TextMuted}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0"
+                               Visibility="{Binding SessionElapsedText, Converter={StaticResource StringToVisibility}}"/>
+                </StackPanel>
+
+                <!-- Counts double as a jump to the full log. -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <Button Style="{StaticResource CountChipButton}"
+                            Foreground="{StaticResource Warning}"
+                            Margin="0,0,4,0"
+                            Command="{Binding ShowPageCommand}"
+                            CommandParameter="Output"
+                            ToolTip="Warnings so far — click to open the full log">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource ButtonIcon}" Data="{StaticResource IconWarning}" Width="11" Height="11" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding LogViewModel.WarningCount}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource CountChipButton}"
+                            Foreground="{StaticResource Danger}"
+                            Margin="0,0,10,0"
+                            Command="{Binding ShowPageCommand}"
+                            CommandParameter="Output"
+                            ToolTip="Errors so far — click to open the full log">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource ButtonIcon}" Data="{StaticResource IconError}" Width="11" Height="11" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding LogViewModel.ErrorCount}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource StopButton}"
+                            Height="22"
+                            Padding="9,0"
+                            FontSize="{StaticResource FontSizeCaption}"
+                            Command="{Binding StopCommand}"
+                            Visibility="{Binding IsSessionRunning, Converter={StaticResource BoolToVisibility}}"
+                            ToolTip="Stop the running build from anywhere">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Style="{StaticResource ButtonIconFilled}" Data="{StaticResource IconStop}" Width="9" Height="9" Margin="0,0,5,0"/>
+                            <TextBlock Text="Stop" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

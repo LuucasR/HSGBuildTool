@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Shell;
 using FMFCBuildTool.Core;
 using FMFCBuildTool.Models;
 using FMFCBuildTool.Services;
@@ -22,7 +23,11 @@ public sealed class MainViewModel : ObservableObject
 {
     private readonly ConfigService _configService;
     private readonly ProcessRunner _runner;
+    private readonly NotificationService _notifications;
+    private readonly ElapsedTimer _sessionElapsed = new();
 
+    private bool _isSessionRunning;
+    private BuildOutcome? _lastOutcome;
     private object? _currentPage;
     private string _currentPageKey = "";
     private string _selectedProject = "";
@@ -42,15 +47,40 @@ public sealed class MainViewModel : ObservableObject
         _runner = runner;
         Context = context;
 
-        LogViewModel = new OutputViewModel(output) { LogFolderFallback = configService.LogDirectory };
+        History = new BuildHistoryService(config);
 
-        Package = new PackageViewModel(context, runner, output, config);
-        Navigation = new NavigationViewModel(context, runner, output, config);
-        Lighting = new LightingViewModel(context, runner, output, config);
+        _notifications = new NotificationService(config);
+
+        LogViewModel = new OutputViewModel(output, config);
+
+        Package = new PackageViewModel(context, runner, output, config, History);
+        Navigation = new NavigationViewModel(context, runner, output, config, History);
+        Lighting = new LightingViewModel(context, runner, output, config, History);
         Settings = new SettingsViewModel(config, configService, context, output, ResolveEngine);
+
+        HistoryPage = new HistoryViewModel(History, context, output);
+
+        Queue = new BuildQueueViewModel(
+            config,
+            output,
+            runner,
+            context,
+            new IBuildPage[] { Package, Navigation, Lighting });
 
         BrowseProjectCommand = new RelayCommand(BrowseProject);
         ShowPageCommand = new RelayCommand(p => CurrentPageKey = p?.ToString() ?? "Package");
+        StopCommand = new RelayCommand(StopEverything, () => IsSessionRunning || _runner.IsRunning);
+
+        // A finished build is worth knowing about even when you have alt-tabbed away, and
+        // it is the moment the taskbar button should stop pulsing and go red or clear.
+        History.Recorded += record =>
+        {
+            _lastOutcome = record.Outcome;
+
+            RaiseTaskbarState();
+
+            _notifications.Notify(record.Outcome);
+        };
 
         // One subscription, one banner. The old shell registered three ProcessExited
         // handlers and printed the same "PROCESS EXITED" line several times per build.
@@ -58,7 +88,43 @@ public sealed class MainViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(IsBusy));
             OnPropertyChanged(nameof(BusyDescription));
+            OnPropertyChanged(nameof(StatusSummary));
+
+            (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
         };
+
+        // The status bar times a *logical* build, which is what a session is. Timing off
+        // RunningChanged instead would restart the clock on every map of a nav build,
+        // since each map is its own process.
+        Output.SessionStarted += () =>
+        {
+            _sessionElapsed.Restart();
+
+            // A new build clears the red taskbar button from the last failed one.
+            _lastOutcome = null;
+
+            IsSessionRunning = true;
+        };
+
+        Output.SessionEnded += () =>
+        {
+            _sessionElapsed.Stop();
+
+            IsSessionRunning = false;
+        };
+
+        _sessionElapsed.PropertyChanged += (_, _) => OnPropertyChanged(nameof(SessionElapsedText));
+
+        // The taskbar bar has to follow the running page's own progress, which only the
+        // page knows how far along it is.
+        foreach (var page in BuildPages.OfType<ObservableObject>())
+        {
+            page.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is nameof(IBuildPage.Progress) or nameof(IBuildPage.IsRunning))
+                    RaiseTaskbarState();
+            };
+        }
 
         foreach (var project in config.RecentProjects)
             RecentProjects.Add(project);
@@ -74,9 +140,13 @@ public sealed class MainViewModel : ObservableObject
 
     public OutputViewModel LogViewModel { get; }
 
+    public BuildHistoryService History { get; }
+
     public PackageViewModel Package { get; }
     public NavigationViewModel Navigation { get; }
     public LightingViewModel Lighting { get; }
+    public BuildQueueViewModel Queue { get; }
+    public HistoryViewModel HistoryPage { get; }
     public SettingsViewModel Settings { get; }
 
     public ObservableCollection<string> RecentProjects { get; } = new();
@@ -84,9 +154,88 @@ public sealed class MainViewModel : ObservableObject
     public ICommand BrowseProjectCommand { get; }
     public ICommand ShowPageCommand { get; }
 
+    /// <summary>Stops whatever is building, from any page.</summary>
+    public ICommand StopCommand { get; }
+
     public bool IsBusy => _runner.IsRunning;
 
     public string BusyDescription => _runner.CurrentDescription;
+
+    /// <summary>
+    /// True for the whole of one logical build, including the gaps between a navigation
+    /// build's per-map processes, when <see cref="IsBusy"/> momentarily goes false.
+    /// </summary>
+    public bool IsSessionRunning
+    {
+        get => _isSessionRunning;
+        private set
+        {
+            if (!SetProperty(ref _isSessionRunning, value))
+                return;
+
+            OnPropertyChanged(nameof(StatusSummary));
+
+            RaiseTaskbarState();
+
+            (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void RaiseTaskbarState()
+    {
+        OnPropertyChanged(nameof(TaskbarProgressState));
+        OnPropertyChanged(nameof(TaskbarProgressValue));
+    }
+
+    public string SessionElapsedText => _sessionElapsed.Text;
+
+    /// <summary>
+    /// Drives the Windows taskbar button, so a twenty-minute cook can be watched from the
+    /// taskbar instead of by keeping the window on screen. Indeterminate for Package,
+    /// which has no readable progress; red for a build that failed.
+    /// </summary>
+    public TaskbarItemProgressState TaskbarProgressState
+    {
+        get
+        {
+            if (IsSessionRunning)
+            {
+                return RunningPage is { IsProgressIndeterminate: false }
+                    ? TaskbarItemProgressState.Normal
+                    : TaskbarItemProgressState.Indeterminate;
+            }
+
+            return _lastOutcome switch
+            {
+                BuildOutcome.Failed => TaskbarItemProgressState.Error,
+                BuildOutcome.Stopped => TaskbarItemProgressState.Paused,
+                _ => TaskbarItemProgressState.None
+            };
+        }
+    }
+
+    /// <summary>0-1, as the taskbar wants it.</summary>
+    public double TaskbarProgressValue =>
+        RunningPage is { IsProgressIndeterminate: false } page ? page.Progress / 100.0 : 0;
+
+    private IBuildPage? RunningPage =>
+        BuildPages.FirstOrDefault(p => p.IsRunning);
+
+    private IBuildPage[] BuildPages => new IBuildPage[] { Package, Navigation, Lighting };
+
+    /// <summary>What the status bar says on the left.</summary>
+    public string StatusSummary
+    {
+        get
+        {
+            if (!IsSessionRunning)
+                return Context.HasProject ? "Idle" : "No project loaded";
+
+            var description = _runner.CurrentDescription;
+
+            return string.IsNullOrWhiteSpace(description) ? "Working" : description;
+        }
+    }
 
     /// <summary>
     /// Height of the bottom log dock, bound two-way to the grid row so dragging the
@@ -121,13 +270,18 @@ public sealed class MainViewModel : ObservableObject
             {
                 "Navigation" => Navigation,
                 "Lighting" => Lighting,
+                "Queue" => Queue,
                 "Output" => LogViewModel,
+                "History" => HistoryPage,
                 "Settings" => Settings,
                 _ => Package
             };
 
             if (value == "Settings")
                 Settings.RefreshResolved();
+
+            if (value == "History")
+                HistoryPage.Refresh();
 
             LogDockRow = value == "Output"
                 ? new GridLength(0)
@@ -194,7 +348,26 @@ public sealed class MainViewModel : ObservableObject
 
         Settings.RefreshResolved();
 
+        OnPropertyChanged(nameof(StatusSummary));
+
         Output.WriteTool($"Opened {Context.ProjectName} ({projectFile})");
+    }
+
+    /// <summary>
+    /// Cancels whichever page owns the run before killing the process, so a navigation
+    /// build does not simply proceed to its next map. Which page it is does not matter —
+    /// only one can be running at a time, and asking all three is cheaper than tracking it.
+    /// </summary>
+    private void StopEverything()
+    {
+        // Also stops the queue, which watches for a Stopped step and abandons the rest.
+        foreach (var page in BuildPages)
+        {
+            if (page.IsRunning && page.StopCommand.CanExecute(null))
+                page.StopCommand.Execute(null);
+        }
+
+        _runner.Cancel();
     }
 
     private void ResolveEngine()

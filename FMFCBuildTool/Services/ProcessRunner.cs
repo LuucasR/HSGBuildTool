@@ -51,7 +51,7 @@ public sealed class ProcessRunner
         lock (_gate)
         {
             if (_isRunning)
-                throw new InvalidOperationException($"A build is already running ({CurrentDescription}). Cancel it first.");
+                throw new InvalidOperationException($"A build is already running ({CurrentDescription}). Stop it first.");
 
             _isRunning = true;
         }

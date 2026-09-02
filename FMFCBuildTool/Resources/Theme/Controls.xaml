@@ -11,7 +11,19 @@
 
     <!-- ============================================================ WINDOW -->
 
-    <Style TargetType="Window">
+    <!--
+        These two must be applied BY KEY. WPF resolves an implicit style by the element's
+        exact runtime type, so a style keyed typeof(Window) never reaches MainWindow and
+        one keyed typeof(UserControl) never reaches PackageView, CommandletPage and the
+        rest — every one of them is a XAML-declared subclass. Both styles used to be
+        implicit only, which is why the window fell back to SystemColors.WindowBrush and
+        the app had a white background behind every page.
+
+        AppWindow  -> Window subclasses      (Style="{StaticResource AppWindow}")
+        AppPage    -> full-page UserControls (paints Bg)
+        AppControl -> embedded UserControls  (stays transparent over its host)
+    -->
+    <Style x:Key="AppWindow" TargetType="Window">
         <Setter Property="Background" Value="{StaticResource Bg}"/>
         <Setter Property="Foreground" Value="{StaticResource Text}"/>
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
@@ -19,11 +31,21 @@
         <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
     </Style>
 
-    <Style TargetType="UserControl">
+    <Style x:Key="AppControl" TargetType="UserControl">
         <Setter Property="Foreground" Value="{StaticResource Text}"/>
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
     </Style>
+
+    <!-- A page owns its whole area, so it paints the background itself. -->
+    <Style x:Key="AppPage" TargetType="UserControl" BasedOn="{StaticResource AppControl}">
+        <Setter Property="Background" Value="{StaticResource Bg}"/>
+    </Style>
+
+    <!-- Kept implicit as well, for any plain Window/UserControl that is not subclassed. -->
+    <Style TargetType="Window" BasedOn="{StaticResource AppWindow}"/>
+    <Style TargetType="UserControl" BasedOn="{StaticResource AppControl}"/>
 
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
@@ -32,13 +54,31 @@
         <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
     </Style>
 
-    <!-- Panel container used instead of GroupBox. -->
+    <!--
+        Panel container used instead of GroupBox. The shadow is what makes a card read as
+        raised now that the elevation steps are only a few points apart; it is deliberately
+        soft and shallow, so it reads as depth rather than as a drawn outline.
+    -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Surface}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{StaticResource PanelRadius}"/>
         <Setter Property="Padding" Value="16"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="16"
+                                  ShadowDepth="2"
+                                  Direction="270"
+                                  Opacity="0.32"
+                                  Color="{StaticResource ShadowColor}"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat variant for cards inside a scroll list, where stacked shadows would muddy. -->
+    <Style x:Key="FlatCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Effect" Value="{x:Null}"/>
     </Style>
 
     <Style TargetType="Separator">
@@ -165,6 +205,133 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
         <Setter Property="Padding" Value="8,0"/>
+    </Style>
+
+    <!--
+        Secondary action carrying an icon and a label — "Log folder", "Log file", "Stop".
+        Ghost chrome so a row of them does not compete with the primary button, but it
+        lights up on hover, unlike GhostButton whose text was the only affordance.
+    -->
+    <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+        <Setter Property="Height" Value="{StaticResource ControlHeightSmall}"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource ControlRadius}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceHover}"/>
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceAlt}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource FocusRing}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Destructive variant of ToolButton: Stop, and anything else that kills work. -->
+    <Style x:Key="StopButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+        <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Danger}"/>
+    </Style>
+
+    <!--
+        Pill toggle with a count, used for the log's severity filters. Lived inside
+        LogPanel.xaml, where the status bar could not reach it.
+    -->
+    <Style x:Key="Chip" TargetType="ToggleButton">
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="Transparent"
+                            BorderBrush="{StaticResource Border}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceAlt}"/>
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource FocusRing}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Read-only counterpart of Chip, for the status bar's error/warning tallies. -->
+    <Style x:Key="CountChipButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="11"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceHover}"/>
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Border}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource FocusRing}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ============================================================ TEXT INPUT -->
@@ -664,7 +831,16 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{StaticResource ControlRadius}"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer Padding="0" Focusable="False">
+
+                        <!--
+                            A GridView's column headers are drawn by this specific
+                            ScrollViewer style, not by the ListView. The template used a
+                            plain ScrollViewer, so every GridView in the app — starting
+                            with the map list — silently had no headers at all.
+                        -->
+                        <ScrollViewer Style="{DynamicResource {x:Static GridView.GridViewScrollViewerStyleKey}}"
+                                      Padding="0"
+                                      Focusable="False">
                             <ItemsPresenter SnapsToDevicePixels="True"/>
                         </ScrollViewer>
                     </Border>
@@ -795,22 +971,64 @@
         </Setter>
     </Style>
 
+    <!--
+        The old template had no indeterminate state, so Package — which has no per-step
+        progress to report — showed an empty trough for the whole build and looked stuck.
+        Indeterminate now sweeps a short bar across the trough.
+    -->
     <Style TargetType="ProgressBar">
-        <Setter Property="Height" Value="3"/>
+        <Setter Property="Height" Value="4"/>
         <Setter Property="Foreground" Value="{StaticResource Accent}"/>
         <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Grid>
+                    <Grid ClipToBounds="True">
                         <Border Background="{TemplateBinding Background}" CornerRadius="2"/>
                         <Border x:Name="PART_Track"/>
                         <Border x:Name="PART_Indicator"
                                 Background="{TemplateBinding Foreground}"
                                 CornerRadius="2"
                                 HorizontalAlignment="Left"/>
+
+                        <!--
+                            Swept far past any realistic bar width (the window caps at a
+                            little over 1200px of content) because an animation cannot bind
+                            its To value to ActualWidth — a Storyboard has to be freezable.
+                            ClipToBounds on the Grid hides the overshoot.
+                        -->
+                        <Border x:Name="Sweep"
+                                Width="120"
+                                Background="{TemplateBinding Foreground}"
+                                CornerRadius="2"
+                                HorizontalAlignment="Left"
+                                Visibility="Collapsed">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="SweepShift" X="-120"/>
+                            </Border.RenderTransform>
+                        </Border>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsIndeterminate" Value="True">
+                            <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Sweep" Property="Visibility" Value="Visible"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="SweepStoryboard">
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="SweepShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         From="-120"
+                                                         To="1600"
+                                                         Duration="0:0:1.6"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="SweepStoryboard"/>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

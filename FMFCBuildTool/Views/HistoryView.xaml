@@ -1,0 +1,161 @@
+<UserControl x:Class="FMFCBuildTool.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:FMFCBuildTool.Views"
+             Style="{StaticResource AppPage}">
+
+    <!--
+        What was built and when. Also the data behind the "~12:34 last time" estimate the
+        build pages show, which is why clearing it warns that estimates go with it.
+    -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <views:PageHeader Title="History" Subtitle="{Binding SummaryText}">
+            <views:PageHeader.Actions>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Content="This project only"
+                              IsChecked="{Binding ThisProjectOnly}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,14,0"/>
+
+                    <Button Style="{StaticResource DangerButton}"
+                            Content="Clear"
+                            Width="80"
+                            Command="{Binding ClearCommand}"/>
+                </StackPanel>
+            </views:PageHeader.Actions>
+        </views:PageHeader>
+
+        <Grid Grid.Row="1" Margin="20,0,20,16">
+
+            <ListView ItemsSource="{Binding Records}"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling">
+
+                <ListView.View>
+                    <GridView>
+
+                        <GridViewColumn Header="When" Width="150">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StartedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Build" Width="110" DisplayMemberBinding="{Binding KindLabel}"/>
+
+                        <GridViewColumn Header="Project" Width="140" DisplayMemberBinding="{Binding ProjectName}"/>
+
+                        <GridViewColumn Header="Detail" Width="170">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Detail}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Result" Width="110">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding Outcome}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Outcome}" Value="Succeeded">
+                                                        <Setter Property="Foreground" Value="{StaticResource Success}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Outcome}" Value="Failed">
+                                                        <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Outcome}" Value="Stopped">
+                                                        <Setter Property="Foreground" Value="{StaticResource Warning}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Took" Width="80">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DurationText}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Warn / Err" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizeCaption}">
+                                        <Run Text="{Binding Warnings, Mode=OneWay}" Foreground="{StaticResource Warning}"/>
+                                        <Run Text="/" Foreground="{StaticResource TextDim}"/>
+                                        <Run Text="{Binding Errors, Mode=OneWay}" Foreground="{StaticResource Danger}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Which commit produced this build. Empty outside a git work tree. -->
+                        <GridViewColumn Header="Source" Width="150">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding GitLabel}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding GitLabel}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Log" Width="80">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource ToolButton}"
+                                            Height="20"
+                                            Padding="8,0"
+                                            FontSize="{StaticResource FontSizeCaption}"
+                                            Content="Open"
+                                            ToolTip="{Binding LogFile}"
+                                            Command="{Binding DataContext.OpenLogCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                            CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <TextBlock Text="{Binding EmptyMessage}"
+                       Foreground="{StaticResource TextDim}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False"
+                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+        </Grid>
+    </Grid>
+</UserControl>

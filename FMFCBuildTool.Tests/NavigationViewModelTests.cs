@@ -34,9 +34,11 @@ public class NavigationViewModelTests : IDisposable
 
     /// <summary>
     /// The saved nav selection must survive the scan that happens when the project opens.
+    /// A config written before presets existed keeps its flat NavigationMaps list; it has
+    /// to come back as the Default preset rather than being silently dropped.
     /// </summary>
     [Fact]
-    public void Saved_navigation_selection_is_restored()
+    public void A_pre_preset_navigation_selection_is_migrated_and_restored()
     {
         Sta.Run(async () =>
         {
@@ -45,25 +47,29 @@ public class NavigationViewModelTests : IDisposable
             config.GetOrCreate(_projectFile).NavigationMaps = new() { "/Game/Maps/L_Hub" };
 
             var context = new BuildContext();
-            var page = new NavigationViewModel(context, new ProcessRunner(), _output, config);
+            var page = new NavigationViewModel(context, new ProcessRunner(), _output, config, new BuildHistoryService(config));
 
             context.ProjectFile = _projectFile;
 
             await page.OnProjectChangedAsync();
 
             Assert.Equal(new[] { "/Game/Maps/L_Hub" }, page.MapSelection.SelectedMaps);
-            Assert.Equal(new[] { "/Game/Maps/L_Hub" }, config.GetOrCreate(_projectFile).NavigationMaps);
+
+            var preset = config.GetOrCreate(_projectFile).GetActiveCommandletPreset("nav");
+
+            Assert.Equal(CommandletPreset.DefaultName, preset.Name);
+            Assert.Equal(new[] { "/Game/Maps/L_Hub" }, preset.Maps);
         });
     }
 
     [Fact]
-    public void Changing_the_selection_writes_it_back()
+    public void Changing_the_selection_writes_it_into_the_active_preset()
     {
         Sta.Run(async () =>
         {
             var config = new AppConfig();
             var context = new BuildContext();
-            var page = new NavigationViewModel(context, new ProcessRunner(), _output, config);
+            var page = new NavigationViewModel(context, new ProcessRunner(), _output, config, new BuildHistoryService(config));
 
             context.ProjectFile = _projectFile;
 
@@ -71,7 +77,43 @@ public class NavigationViewModelTests : IDisposable
 
             page.MapSelection.SelectAllCommand.Execute(null);
 
-            Assert.Equal(3, config.GetOrCreate(_projectFile).NavigationMaps.Count);
+            Assert.Equal(3, config.GetOrCreate(_projectFile).GetActiveCommandletPreset("nav").Maps.Count);
+        });
+    }
+
+    /// <summary>
+    /// Two presets on the same page keep separate selections, and switching between them
+    /// swaps what is checked. This is the whole reason the pages grew presets.
+    /// </summary>
+    [Fact]
+    public void Presets_keep_separate_selections()
+    {
+        Sta.Run(async () =>
+        {
+            var config = new AppConfig();
+            var settings = config.GetOrCreate(_projectFile);
+
+            settings.NavigationPresets.Add(new CommandletPreset { Maps = { "/Game/Maps/L_Hub" } });
+            settings.NavigationPresets.Add(new CommandletPreset { Name = "Combat", Maps = { "/Game/Maps/L_Arena" } });
+
+            var context = new BuildContext();
+            var page = new NavigationViewModel(context, new ProcessRunner(), _output, config, new BuildHistoryService(config));
+
+            context.ProjectFile = _projectFile;
+
+            await page.OnProjectChangedAsync();
+
+            Assert.Equal(new[] { "/Game/Maps/L_Hub" }, page.MapSelection.SelectedMaps);
+
+            page.SelectedPreset = page.Presets.Single(p => p.Name == "Combat");
+
+            Assert.Equal(new[] { "/Game/Maps/L_Arena" }, page.MapSelection.SelectedMaps);
+
+            // Editing under one preset must not reach into the other.
+            page.MapSelection.SelectAllCommand.Execute(null);
+
+            Assert.Equal(3, settings.NavigationPresets.Single(p => p.Name == "Combat").Maps.Count);
+            Assert.Equal(new[] { "/Game/Maps/L_Hub" }, settings.NavigationPresets[0].Maps);
         });
     }
 
@@ -90,8 +132,8 @@ public class NavigationViewModelTests : IDisposable
             var context = new BuildContext();
             var runner = new ProcessRunner();
 
-            var nav = new NavigationViewModel(context, runner, _output, config);
-            var lighting = new LightingViewModel(context, runner, _output, config);
+            var nav = new NavigationViewModel(context, runner, _output, config, new BuildHistoryService(config));
+            var lighting = new LightingViewModel(context, runner, _output, config, new BuildHistoryService(config));
 
             context.ProjectFile = _projectFile;
 
@@ -113,7 +155,7 @@ public class NavigationViewModelTests : IDisposable
             config.GetOrCreate(_projectFile).LightingQuality = "Medium";
 
             var context = new BuildContext();
-            var page = new LightingViewModel(context, new ProcessRunner(), _output, config);
+            var page = new LightingViewModel(context, new ProcessRunner(), _output, config, new BuildHistoryService(config));
 
             context.ProjectFile = _projectFile;
 

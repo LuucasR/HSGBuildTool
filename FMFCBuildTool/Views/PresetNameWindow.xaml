@@ -6,9 +6,15 @@
         SizeToContent="Height"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource AppWindow}">
 
-    <Border Style="{StaticResource Card}" CornerRadius="0" BorderThickness="0" Background="{StaticResource Bg}" Padding="20">
+    <!--
+        The Border used to carry Background="{StaticResource Bg}" by hand, because the
+        theme's Window style was implicit and so never reached this subclass. AppWindow
+        paints the window itself now.
+    -->
+    <Border Padding="20">
         <StackPanel>
 
             <TextBlock Style="{StaticResource H2}" Text="Save preset as"/>

@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading;
 using FMFCBuildTool.Core;
 using FMFCBuildTool.Models;
 using FMFCBuildTool.Services;
@@ -23,7 +22,7 @@ namespace FMFCBuildTool.ViewModels;
 /// <see cref="BuildPreset"/>, replacing the two 55-line methods that used to copy
 /// ~30 checkboxes between the controls and the model by hand.
 /// </summary>
-public sealed class PackageViewModel : ObservableObject
+public sealed class PackageViewModel : ObservableObject, IBuildPage
 {
     private static readonly (string Code, string Label)[] KnownCultures =
     {
@@ -38,8 +37,8 @@ public sealed class PackageViewModel : ObservableObject
     private readonly ProcessRunner _runner;
     private readonly OutputService _output;
     private readonly AppConfig _config;
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private readonly Stopwatch _stopwatch = new();
+    private readonly BuildHistoryService _history;
+    private readonly ElapsedTimer _elapsed = new();
 
     private ProjectSettings _settings = new();
     private BuildPreset _preset = new();
@@ -48,16 +47,22 @@ public sealed class PackageViewModel : ObservableObject
     private string _commandPreview = "";
     private string _validationMessage = "";
     private string _statusText = "Ready";
-    private string _elapsedText = "";
+    private string _estimateText = "";
     private bool _isBuilding;
     private bool _suspendRefresh;
 
-    public PackageViewModel(BuildContext context, ProcessRunner runner, OutputService output, AppConfig config)
+    public PackageViewModel(
+        BuildContext context,
+        ProcessRunner runner,
+        OutputService output,
+        AppConfig config,
+        BuildHistoryService history)
     {
         _context = context;
         _runner = runner;
         _output = output;
         _config = config;
+        _history = history;
 
         MapSelection = new MapSelectionViewModel();
         MapSelection.SelectionChanged += OnMapSelectionChanged;
@@ -70,17 +75,21 @@ public sealed class PackageViewModel : ObservableObject
             Cultures.Add(option);
         }
 
-        BuildCommand = new AsyncRelayCommand(BuildAsync, () => CanBuild);
-        CancelCommand = new RelayCommand(Cancel, () => _isBuilding);
+        BuildCommand = new AsyncRelayCommand(RunAsync, () => CanBuild);
+        StopCommand = new RelayCommand(Stop, () => _isBuilding);
         BrowseArchiveCommand = new RelayCommand(BrowseArchive);
         CopyCommandLineCommand = new RelayCommand(CopyCommandLine);
-        SaveBatchFileCommand = new RelayCommand(SaveBatchFile);
+        SaveBatchFileCommand = new RelayCommand(SaveBatchFile, () => CommandPreview.Length > 0);
+        OpenOutputFolderCommand = new RelayCommand(OpenOutputFolder);
+
+        OpenLogFileCommand = new RelayCommand(_output.OpenCurrentLogFile);
+        OpenLogFolderCommand = new RelayCommand(_output.OpenLogFolder);
 
         SavePresetCommand = new RelayCommand(SavePreset);
         SaveAsPresetCommand = new RelayCommand(SaveAsPreset);
         DeletePresetCommand = new RelayCommand(DeletePreset, () => Presets.Count > 1);
 
-        _timer.Tick += (_, _) => ElapsedText = _stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+        _elapsed.PropertyChanged += (_, _) => OnPropertyChanged(nameof(ElapsedText));
 
         _context.PropertyChanged += (_, e) =>
         {
@@ -100,13 +109,37 @@ public sealed class PackageViewModel : ObservableObject
     public IReadOnlyList<string> Configurations { get; } = new[] { "Shipping", "Development", "DebugGame", "Test" };
 
     public ICommand BuildCommand { get; }
-    public ICommand CancelCommand { get; }
+    public ICommand StopCommand { get; }
     public ICommand BrowseArchiveCommand { get; }
     public ICommand CopyCommandLineCommand { get; }
     public ICommand SaveBatchFileCommand { get; }
+    public ICommand OpenOutputFolderCommand { get; }
+    public ICommand OpenLogFileCommand { get; }
+    public ICommand OpenLogFolderCommand { get; }
     public ICommand SavePresetCommand { get; }
     public ICommand SaveAsPresetCommand { get; }
     public ICommand DeletePresetCommand { get; }
+
+    // The shared action bar speaks in Run/IsRunning; this page has always called the same
+    // things Build/IsBuilding, which is the clearer name inside a page about packaging.
+    // Public rather than an explicit implementation: XAML binds by name against the
+    // concrete type and cannot see an explicitly implemented member.
+    public ICommand RunCommand => BuildCommand;
+
+    public string Kind => "package";
+
+    public string RunButtonText => "BUILD";
+
+    public bool IsRunning => IsBuilding;
+
+    public bool CanRun => CanBuild;
+
+    /// <summary>True: one RunUAT invocation reports no progress we can read.</summary>
+    public bool IsProgressIndeterminate => true;
+
+    public double Progress => 0;
+
+    public BuildOutcome? LastOutcome { get; private set; }
 
     // ---------------------------------------------------------------- presets
 
@@ -365,10 +398,13 @@ public sealed class PackageViewModel : ObservableObject
         private set => SetProperty(ref _statusText, value);
     }
 
-    public string ElapsedText
+    public string ElapsedText => _elapsed.Text;
+
+    /// <summary>"~12:34 last time" — what history says a build of this project costs.</summary>
+    public string EstimateText
     {
-        get => _elapsedText;
-        private set => SetProperty(ref _elapsedText, value);
+        get => _estimateText;
+        private set => SetProperty(ref _estimateText, value);
     }
 
     public bool IsBuilding
@@ -376,8 +412,11 @@ public sealed class PackageViewModel : ObservableObject
         get => _isBuilding;
         private set
         {
-            if (SetProperty(ref _isBuilding, value))
-                RaiseCommandStates();
+            if (!SetProperty(ref _isBuilding, value))
+                return;
+
+            OnPropertyChanged(nameof(IsRunning));
+            RaiseCommandStates();
         }
     }
 
@@ -449,7 +488,7 @@ public sealed class PackageViewModel : ObservableObject
 
     // ---------------------------------------------------------------- build
 
-    private async Task BuildAsync()
+    public async Task RunAsync()
     {
         if (!_context.HasProject)
             return;
@@ -469,7 +508,7 @@ public sealed class PackageViewModel : ObservableObject
 
         if (_runner.IsRunning)
         {
-            _output.WriteTool($"A build is already running ({_runner.CurrentDescription}). Cancel it first.", LogSeverity.Warning);
+            _output.WriteTool($"A build is already running ({_runner.CurrentDescription}). Stop it first.", LogSeverity.Warning);
             return;
         }
 
@@ -477,61 +516,101 @@ public sealed class PackageViewModel : ObservableObject
         var commandLine = RunUATBuilder.ToCommandLine(arguments);
 
         IsBuilding = true;
+        LastOutcome = null;
 
         _cancellation = new CancellationTokenSource();
-        _stopwatch.Restart();
-        _timer.Start();
+        _elapsed.Restart();
 
         StatusText = "Building";
-        ElapsedText = "00:00:00";
 
-        _output.BeginSession("package", _context.ProjectName);
+        _output.BeginSession("package", _context.ProjectName, _context.ProjectFile);
         _output.WriteTool($"{engine.RunUAT} {commandLine}");
+
+        var exitCode = -1;
 
         try
         {
-            var exitCode = await _runner.RunAsync(
+            exitCode = await _runner.RunAsync(
                 engine.RunUAT,
                 commandLine,
                 _context.ProjectDirectory,
                 "package build",
                 _cancellation.Token);
 
-            StatusText = exitCode == 0
-                ? $"Succeeded in {_stopwatch.Elapsed:hh\\:mm\\:ss}"
-                : $"Failed ({exitCode}) after {_stopwatch.Elapsed:hh\\:mm\\:ss}";
+            // A stopped build reports some non-zero code of its own; saying it "failed"
+            // when the user pressed Stop reads as a bug in the build.
+            LastOutcome = _cancellation.IsCancellationRequested
+                ? BuildOutcome.Stopped
+                : exitCode == 0 ? BuildOutcome.Succeeded : BuildOutcome.Failed;
+
+            StatusText = LastOutcome switch
+            {
+                BuildOutcome.Succeeded => $"Succeeded in {_elapsed.Formatted}",
+                BuildOutcome.Stopped => $"Stopped after {_elapsed.Formatted}",
+                _ => $"Failed ({exitCode}) after {_elapsed.Formatted}"
+            };
 
             _output.WriteTool(
-                $"Package build finished with exit code {exitCode} after {_stopwatch.Elapsed:hh\\:mm\\:ss}.",
-                exitCode == 0 ? LogSeverity.Info : LogSeverity.Error);
+                $"Package build finished with exit code {exitCode} after {_elapsed.Formatted}.",
+                LastOutcome == BuildOutcome.Succeeded ? LogSeverity.Info : LogSeverity.Error);
         }
         catch (Exception ex)
         {
             // Goes to the log panel rather than a MessageBox full of stack trace.
+            LastOutcome = BuildOutcome.Failed;
             StatusText = "Failed";
+
             _output.WriteTool($"Package build could not start: {ex.Message}", LogSeverity.Error);
         }
         finally
         {
-            _timer.Stop();
-            _stopwatch.Stop();
+            // Stop, not Reset: a 40-minute cook's total is the number worth keeping on
+            // screen. The old code blanked it here and it survived only inside StatusText.
+            _elapsed.Stop();
 
             _cancellation?.Dispose();
             _cancellation = null;
 
+            RecordHistory(exitCode);
+
             _output.EndSession();
 
             IsBuilding = false;
-            ElapsedText = "";
+
+            UpdateEstimate();
         }
     }
 
-    private void Cancel()
+    private void RecordHistory(int exitCode)
+    {
+        if (LastOutcome is not { } outcome)
+            return;
+
+        _history.Record(new BuildRecord
+        {
+            Kind = "package",
+            ProjectFile = _context.ProjectFile,
+            ProjectName = _context.ProjectName,
+            Detail = _preset.Name,
+            StartedAt = _output.SessionStartedAt ?? DateTime.Now,
+            DurationSeconds = _elapsed.Elapsed.TotalSeconds,
+            Outcome = outcome,
+            ExitCode = exitCode,
+            LogFile = _output.CurrentLogFile ?? "",
+            Warnings = _output.SessionWarnings,
+            Errors = _output.SessionErrors,
+            GitBranch = _output.SessionGit.Branch,
+            GitCommit = _output.SessionGit.Commit
+        });
+    }
+
+    /// <summary>Cancels the build and kills RunUAT together with its child processes.</summary>
+    private void Stop()
     {
         if (!_isBuilding)
             return;
 
-        StatusText = "Cancelling";
+        StatusText = "Stopping";
 
         _cancellation?.Cancel();
         _runner.Cancel();
@@ -564,7 +643,7 @@ public sealed class PackageViewModel : ObservableObject
 
     private void SaveAsPreset()
     {
-        var name = PromptForPresetName();
+        var name = PresetNameWindow.Prompt();
 
         if (string.IsNullOrWhiteSpace(name))
             return;
@@ -618,16 +697,6 @@ public sealed class PackageViewModel : ObservableObject
         _output.WriteTool($"Preset \"{doomed.Name}\" deleted.");
     }
 
-    private static string? PromptForPresetName()
-    {
-        var dialog = new PresetNameWindow
-        {
-            Owner = Application.Current.MainWindow
-        };
-
-        return dialog.ShowDialog() == true ? dialog.PresetName : null;
-    }
-
     // ---------------------------------------------------------------- actions
 
     private void BrowseArchive()
@@ -675,11 +744,11 @@ public sealed class PackageViewModel : ObservableObject
 
         try
         {
-            var script =
-                $"@echo off{Environment.NewLine}" +
-                $"REM Generated by FMFC Build Tool — preset \"{_preset.Name}\"{Environment.NewLine}" +
-                $"cd /d \"{_context.ProjectDirectory}\"{Environment.NewLine}" +
-                $"call \"{engine.RunUAT}\" {RunUATBuilder.ToCommandLine(RunUATBuilder.BuildArguments(_preset, _context.ProjectFile, engine))}{Environment.NewLine}";
+            var script = BatchScriptWriter.ForSingleCommand(
+                $"Package, preset \"{_preset.Name}\"",
+                _context.ProjectDirectory,
+                engine.RunUAT,
+                RunUATBuilder.ToCommandLine(RunUATBuilder.BuildArguments(_preset, _context.ProjectFile, engine)));
 
             File.WriteAllText(dialog.FileName, script);
 
@@ -689,6 +758,49 @@ public sealed class PackageViewModel : ObservableObject
         {
             _output.WriteTool($"Could not save the batch file: {ex.Message}", LogSeverity.Error);
         }
+    }
+
+    /// <summary>
+    /// Opens where the build actually landed. Falls back through archive → staged → the
+    /// project's Saved folder, because which of those exists depends on whether the
+    /// preset archives, and only stages, or neither.
+    /// </summary>
+    private void OpenOutputFolder()
+    {
+        foreach (var candidate in OutputFolderCandidates())
+        {
+            if (string.IsNullOrWhiteSpace(candidate) || !Directory.Exists(candidate))
+                continue;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(candidate) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                _output.WriteTool($"Could not open {candidate}: {ex.Message}", LogSeverity.Warning);
+            }
+
+            return;
+        }
+
+        _output.WriteTool(
+            "No build output yet — the archive and staging folders appear once a package build has run.",
+            LogSeverity.Warning);
+    }
+
+    private IEnumerable<string> OutputFolderCandidates()
+    {
+        if (_preset.Archive && !string.IsNullOrWhiteSpace(_preset.ArchiveDirectory))
+            yield return _preset.ArchiveDirectory;
+
+        if (!_context.HasProject)
+            yield break;
+
+        var saved = Path.Combine(_context.ProjectDirectory, "Saved");
+
+        yield return Path.Combine(saved, "StagedBuilds");
+        yield return saved;
     }
 
     // ---------------------------------------------------------------- plumbing
@@ -749,14 +861,26 @@ public sealed class PackageViewModel : ObservableObject
             ? $"\"{engine.RunUAT}\" {RunUATBuilder.ToCommandLine(RunUATBuilder.BuildArguments(_preset, _context.ProjectFile, engine))}"
             : "";
 
+        UpdateEstimate();
+
         OnPropertyChanged(nameof(CanBuild));
+        OnPropertyChanged(nameof(CanRun));
+
         RaiseCommandStates();
+    }
+
+    private void UpdateEstimate()
+    {
+        var estimate = _context.HasProject ? _history.Estimate("package", _context.ProjectFile) : null;
+
+        EstimateText = estimate is { } value ? $"~{value:hh\\:mm\\:ss} last time" : "";
     }
 
     private void RaiseCommandStates()
     {
         (BuildCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-        (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (SaveBatchFileCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (DeletePresetCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 }

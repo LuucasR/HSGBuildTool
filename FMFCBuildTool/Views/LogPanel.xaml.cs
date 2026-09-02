@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using FMFCBuildTool.Models;
 using FMFCBuildTool.ViewModels;
 
 namespace FMFCBuildTool.Views;
@@ -39,6 +40,7 @@ public partial class LogPanel : UserControl
 
         _viewModel = viewModel;
         _viewModel.ScrollToEndRequested += ScrollToEnd;
+        _viewModel.ScrollToEntryRequested += ScrollToEntry;
     }
 
     private void Detach()
@@ -47,7 +49,18 @@ public partial class LogPanel : UserControl
             return;
 
         _viewModel.ScrollToEndRequested -= ScrollToEnd;
+        _viewModel.ScrollToEntryRequested -= ScrollToEntry;
         _viewModel = null;
+    }
+
+    /// <summary>
+    /// Brings one line into view and selects it, so jumping from the problems list lands
+    /// somewhere you can see rather than merely scrolling near it.
+    /// </summary>
+    private void ScrollToEntry(LogEntry entry)
+    {
+        LinesList.ScrollIntoView(entry);
+        LinesList.SelectedItem = entry;
     }
 
     private void ScrollToEnd()

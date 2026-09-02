@@ -7,15 +7,20 @@
         defined six brushes and then hardcoded the rest inline across the views, so
         the same grey existed as three slightly different values.
 
+        The elevation ramp was re-cut because Bg (#0D1117) and Surface (#161B22) sat
+        nine points apart and read as one flat sheet: cards did not look raised, and the
+        log dock did not look separate from the page above it. Each step is now a clear
+        one, and the ramp leans slightly blue so the cyan accent belongs to it.
+
         Contrast: Text and TextMuted both clear 4.5:1 against Bg, Surface and SurfaceAlt.
     -->
 
     <!-- ===== Elevation ===== -->
-    <Color x:Key="BgColor">#FF0D1117</Color>
-    <Color x:Key="SurfaceColor">#FF161B22</Color>
-    <Color x:Key="SurfaceAltColor">#FF1C2129</Color>
-    <Color x:Key="SurfaceHoverColor">#FF232A33</Color>
-    <Color x:Key="InputColor">#FF0D1117</Color>
+    <Color x:Key="BgColor">#FF0A0D13</Color>
+    <Color x:Key="SurfaceColor">#FF131822</Color>
+    <Color x:Key="SurfaceAltColor">#FF1B2130</Color>
+    <Color x:Key="SurfaceHoverColor">#FF242C3C</Color>
+    <Color x:Key="InputColor">#FF080B10</Color>
 
     <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="Surface" Color="{StaticResource SurfaceColor}"/>
@@ -23,28 +28,37 @@
     <SolidColorBrush x:Key="SurfaceHover" Color="{StaticResource SurfaceHoverColor}"/>
     <SolidColorBrush x:Key="Input" Color="{StaticResource InputColor}"/>
 
+    <!-- Shadow under cards and popups. Pure black at low opacity, never a grey. -->
+    <Color x:Key="ShadowColor">#FF000000</Color>
+
     <!-- ===== Lines ===== -->
-    <Color x:Key="BorderColor">#FF30363D</Color>
-    <Color x:Key="BorderStrongColor">#FF484F58</Color>
+    <Color x:Key="BorderColor">#FF242B38</Color>
+    <Color x:Key="BorderStrongColor">#FF3A4354</Color>
 
     <SolidColorBrush x:Key="Border" Color="{StaticResource BorderColor}"/>
     <SolidColorBrush x:Key="BorderStrong" Color="{StaticResource BorderStrongColor}"/>
 
     <!-- ===== Accent ===== -->
-    <Color x:Key="AccentColor">#FF4CC2FF</Color>
-    <Color x:Key="AccentHoverColor">#FF6FD0FF</Color>
-    <Color x:Key="AccentPressedColor">#FF33A9E6</Color>
+    <Color x:Key="AccentColor">#FF56A8FF</Color>
+    <Color x:Key="AccentHoverColor">#FF7CBEFF</Color>
+    <Color x:Key="AccentPressedColor">#FF3D89DE</Color>
 
     <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}"/>
     <SolidColorBrush x:Key="AccentHover" Color="{StaticResource AccentHoverColor}"/>
     <SolidColorBrush x:Key="AccentPressed" Color="{StaticResource AccentPressedColor}"/>
-    <SolidColorBrush x:Key="AccentSubtle" Color="#332F81A8"/>
+    <SolidColorBrush x:Key="AccentSubtle" Color="#3356A8FF"/>
+
+    <!-- Keyboard focus. Deliberately the accent, so "focused" reads the same everywhere. -->
+    <SolidColorBrush x:Key="FocusRing" Color="{StaticResource AccentColor}"/>
 
     <!-- ===== Semantic ===== -->
     <SolidColorBrush x:Key="Success" Color="#FF3FB950"/>
     <SolidColorBrush x:Key="Warning" Color="#FFD29922"/>
     <SolidColorBrush x:Key="Danger" Color="#FFF85149"/>
     <SolidColorBrush x:Key="DangerHover" Color="#FFFF6A61"/>
+
+    <!-- The pulsing dot in the status bar while a build is in flight. -->
+    <SolidColorBrush x:Key="Running" Color="{StaticResource AccentColor}"/>
 
     <!-- Log text runs slightly brighter than the status colours so long lines stay legible. -->
     <SolidColorBrush x:Key="LogInfo" Color="#FFE6EDF3"/>

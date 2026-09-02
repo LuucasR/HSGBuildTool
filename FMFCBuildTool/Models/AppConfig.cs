@@ -22,7 +22,25 @@ public class AppConfig
 
     public double LogDockHeight { get; set; } = 220;
 
+    /// <summary>Whether the log's problems list is open. Remembered like the log height.</summary>
+    public bool ShowLogIssues { get; set; }
+
+    /// <summary>Sound and a taskbar flash when a build ends and the window is not focused.</summary>
+    public bool NotifyOnFinish { get; set; } = true;
+
+    /// <summary>Steps the build queue runs, in order. Empty means "never configured".</summary>
+    public List<string> QueueSteps { get; set; } = new();
+
+    /// <summary>Abandon the queue at the first failure rather than pressing on.</summary>
+    public bool QueueStopsOnFailure { get; set; } = true;
+
     public List<string> RecentProjects { get; set; } = new();
+
+    /// <summary>
+    /// Finished runs, newest first, capped by
+    /// <see cref="Services.BuildHistoryService.MaxRecords"/>.
+    /// </summary>
+    public List<BuildRecord> History { get; set; } = new();
 
     public Dictionary<string, ProjectSettings> Projects { get; set; } = new();
 

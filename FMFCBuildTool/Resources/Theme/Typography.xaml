@@ -12,16 +12,32 @@
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
     <sys:Double x:Key="FontSizeH1">20</sys:Double>
+    <sys:Double x:Key="FontSizePageTitle">18</sys:Double>
     <sys:Double x:Key="FontSizeH2">15</sys:Double>
     <sys:Double x:Key="FontSizeBody">13</sys:Double>
     <sys:Double x:Key="FontSizeCaption">12</sys:Double>
     <sys:Double x:Key="FontSizeMono">12</sys:Double>
 
     <!-- Control metrics: dense, tool-like. The old global Button style forced Height=40. -->
+    <sys:Double x:Key="ControlHeightSmall">26</sys:Double>
     <sys:Double x:Key="ControlHeight">28</sys:Double>
     <sys:Double x:Key="ControlHeightLarge">34</sys:Double>
     <CornerRadius x:Key="ControlRadius">4</CornerRadius>
     <CornerRadius x:Key="PanelRadius">6</CornerRadius>
+
+    <!-- One page gutter, so the five pages line up with each other and with the header. -->
+    <Thickness x:Key="PageGutter">20,0,20,0</Thickness>
+
+    <!--
+        Name of the current page, in its header. Sits between H1 and H2: the page title
+        competes with the window title bar directly above it, so it does not need H1.
+    -->
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizePageTitle}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+    </Style>
 
     <Style x:Key="H1" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
