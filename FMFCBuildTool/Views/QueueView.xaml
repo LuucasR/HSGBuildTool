@@ -18,7 +18,7 @@
         </Grid.RowDefinitions>
 
         <views:PageHeader Title="Queue"
-                          Subtitle="Runs the selected builds back to back, using each page's own settings. Every step writes its own log, exactly as if you had run it by hand."/>
+                          Subtitle="Runs the selected builds back to back, in the order you tick them, using each page's own settings. Every step writes its own log, exactly as if you had run it by hand."/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,0,20,0">
             <StackPanel>
@@ -30,6 +30,7 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
@@ -38,14 +39,33 @@
                                               VerticalAlignment="Center"
                                               Margin="0,0,12,0"/>
 
-                                    <StackPanel Grid.Column="1">
+                                    <!-- The card order already is the run order; the number
+                                         says so out loud, and reads at a glance. -->
+                                    <Border Grid.Column="1"
+                                            Width="22"
+                                            Height="22"
+                                            CornerRadius="11"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center"
+                                            Background="{StaticResource AccentSubtle}"
+                                            Visibility="{Binding IsEnabled, Converter={StaticResource BoolToVisibility}}">
+
+                                        <TextBlock Text="{Binding PositionLabel}"
+                                                   Foreground="{StaticResource Accent}"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="{StaticResource FontSizeCaption}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="2">
                                         <TextBlock Style="{StaticResource H2}" Text="{Binding Label}"/>
                                         <TextBlock Style="{StaticResource Caption}"
                                                    Margin="0,2,0,0"
                                                    Text="{Binding Description}"/>
                                     </StackPanel>
 
-                                    <TextBlock Grid.Column="2"
+                                    <TextBlock Grid.Column="3"
                                                Text="{Binding StateLabel}"
                                                VerticalAlignment="Center"
                                                FontWeight="SemiBold">

@@ -159,6 +159,77 @@ public class BuildQueueTests : IDisposable
             restored.Steps.Where(s => s.IsEnabled).Select(s => s.Page.Kind));
     }
 
+    /// <summary>
+    /// The order steps are ticked in is the order they run in. Anything else means picking
+    /// Lighting first and Package second still cooks first, which is wrong whenever one
+    /// step wants the output of another.
+    /// </summary>
+    [Fact]
+    public async Task Runs_the_steps_in_the_order_they_were_picked()
+    {
+        var order = new List<string>();
+        var (queue, _) = Create(order);
+
+        queue.Steps.Single(s => s.Page.Kind == "lighting").IsEnabled = true;
+        queue.Steps.Single(s => s.Page.Kind == "package").IsEnabled = true;
+
+        // The cards themselves are the run order, not just the loop.
+        Assert.Equal(new[] { "lighting", "package" }, queue.Steps.Take(2).Select(s => s.Page.Kind));
+        Assert.Equal(new[] { 1, 2 }, queue.Steps.Take(2).Select(s => s.Position));
+
+        await Run(queue);
+
+        Assert.Equal(new[] { "lighting", "package" }, order);
+    }
+
+    /// <summary>Unticking drops a step out of the numbering and back below the picked ones.</summary>
+    [Fact]
+    public void Unpicking_a_step_sends_it_back_below_the_picked_ones()
+    {
+        var (queue, _) = Create(new List<string>());
+
+        queue.Steps.Single(s => s.Page.Kind == "lighting").IsEnabled = true;
+        queue.Steps.Single(s => s.Page.Kind == "package").IsEnabled = true;
+        queue.Steps.Single(s => s.Page.Kind == "lighting").IsEnabled = false;
+
+        Assert.Equal("package", queue.Steps[0].Page.Kind);
+        Assert.Equal(1, queue.Steps[0].Position);
+
+        Assert.Equal(0, queue.Steps.Single(s => s.Page.Kind == "lighting").Position);
+        Assert.Equal("", queue.Steps.Single(s => s.Page.Kind == "lighting").PositionLabel);
+
+        // Ticking it again puts it at the back, not back where it was.
+        queue.Steps.Single(s => s.Page.Kind == "lighting").IsEnabled = true;
+
+        Assert.Equal(new[] { "package", "lighting" }, queue.Steps.Take(2).Select(s => s.Page.Kind));
+    }
+
+    /// <summary>
+    /// AppConfig.QueueSteps was already documented as ordered and written in order, but was
+    /// read back with Contains, so the order died with the session.
+    /// </summary>
+    [Fact]
+    public void The_pick_order_is_remembered()
+    {
+        var config = new AppConfig();
+        var (queue, _) = Create(new List<string>(), config);
+
+        queue.Steps.Single(s => s.Page.Kind == "lighting").IsEnabled = true;
+        queue.Steps.Single(s => s.Page.Kind == "nav").IsEnabled = true;
+
+        Assert.Equal(new[] { "lighting", "nav" }, config.QueueSteps);
+
+        var (restored, _) = Create(new List<string>(), config);
+
+        Assert.Equal(new[] { "lighting", "nav" }, restored.Steps.Take(2).Select(s => s.Page.Kind));
+        Assert.Equal(new[] { 1, 2 }, restored.Steps.Take(2).Select(s => s.Position));
+
+        // And a step picked in the restored session goes after the ones it restored.
+        restored.Steps.Single(s => s.Page.Kind == "package").IsEnabled = true;
+
+        Assert.Equal(new[] { "lighting", "nav", "package" }, config.QueueSteps);
+    }
+
     /// <summary>Nothing selected means nothing to run; the button stays dead.</summary>
     [Fact]
     public void Cannot_run_an_empty_queue()
@@ -172,9 +243,10 @@ public class BuildQueueTests : IDisposable
         Assert.True(queue.CanRun);
     }
 
+    /// <summary>Ticks in the canonical order, so the list is not reordered underneath it.</summary>
     private static void EnableAll(BuildQueueViewModel queue)
     {
-        foreach (var step in queue.Steps)
+        foreach (var step in queue.Steps.ToList())
             step.IsEnabled = true;
     }
 
@@ -195,9 +267,9 @@ public class BuildQueueTests : IDisposable
 
         var pages = new[]
         {
-            new FakePage("package", order),
-            new FakePage("nav", order),
-            new FakePage("lighting", order)
+            new FakePage("package", order, _output),
+            new FakePage("nav", order, _output),
+            new FakePage("lighting", order, _output)
         };
 
         var queue = new BuildQueueViewModel(config, _output, new ProcessRunner(), context, pages);
@@ -233,10 +305,12 @@ public class BuildQueueTests : IDisposable
     {
         private readonly List<string> _order;
 
-        public FakePage(string kind, List<string> order)
+        public FakePage(string kind, List<string> order, OutputService output)
         {
             Kind = kind;
             _order = order;
+
+            LogExport = new LogExportViewModel(output);
         }
 
         public BuildOutcome Outcome { get; set; } = BuildOutcome.Succeeded;
@@ -253,6 +327,8 @@ public class BuildQueueTests : IDisposable
         public ICommand SaveBatchFileCommand { get; } = new RelayCommand(() => { });
         public ICommand OpenLogFileCommand { get; } = new RelayCommand(() => { });
         public ICommand OpenLogFolderCommand { get; } = new RelayCommand(() => { });
+
+        public LogExportViewModel LogExport { get; }
 
         public bool IsRunning => false;
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using FMFCBuildTool.Models;
 using FMFCBuildTool.Services;
 using Xunit;
 
@@ -106,6 +107,74 @@ public class OutputServiceTests : IDisposable
 
         Assert.EndsWith("-FMFC-nav.log", file);
         Assert.Contains("hello", File.ReadAllText(file));
+    }
+
+    /// <summary>
+    /// The point of the export: hand someone the handful of lines that matter out of a
+    /// couple of hundred thousand, without copying the file and pruning it by hand.
+    /// </summary>
+    [Fact]
+    public void Write_filtered_keeps_only_the_chosen_severities()
+    {
+        Seed();
+
+        var path = Path.Combine(_root, "errors.log");
+
+        Assert.Equal(2, _output.WriteFiltered(path, LogExportScope.ErrorsOnly));
+        Assert.Equal(new[] { "boom", "worse" }, File.ReadAllLines(path));
+    }
+
+    /// <summary>Original order, so the export still reads like the build that produced it.</summary>
+    [Fact]
+    public void Write_filtered_keeps_the_original_order()
+    {
+        Seed();
+
+        var path = Path.Combine(_root, "issues.log");
+
+        Assert.Equal(4, _output.WriteFiltered(path, LogExportScope.WarningsAndErrors));
+        Assert.Equal(new[] { "careful", "boom", "also careful", "worse" }, File.ReadAllLines(path));
+    }
+
+    [Fact]
+    public void Write_filtered_everything_keeps_the_quiet_lines_too()
+    {
+        Seed();
+
+        var path = Path.Combine(_root, "full.log");
+
+        Assert.Equal(6, _output.WriteFiltered(path, LogExportScope.Everything));
+        Assert.Equal(6, File.ReadAllLines(path).Length);
+    }
+
+    /// <summary>
+    /// What the export menu asks before opening a save dialog, so "errors only" on a clean
+    /// build says so rather than writing an empty file.
+    /// </summary>
+    [Fact]
+    public void Counts_the_lines_an_export_would_keep()
+    {
+        Seed();
+
+        Assert.Equal(6, _output.CountFor(LogExportScope.Everything));
+        Assert.Equal(4, _output.CountFor(LogExportScope.WarningsAndErrors));
+        Assert.Equal(2, _output.CountFor(LogExportScope.ErrorsOnly));
+        Assert.Equal(2, _output.CountFor(LogExportScope.WarningsOnly));
+
+        _output.Clear();
+
+        Assert.Equal(0, _output.CountFor(LogExportScope.ErrorsOnly));
+    }
+
+    /// <summary>Two warnings, two errors, one info and one verbose, in that interleaving.</summary>
+    private void Seed()
+    {
+        _output.WriteTool("starting");
+        _output.WriteTool("careful", LogSeverity.Warning);
+        _output.WriteTool("boom", LogSeverity.Error);
+        _output.WriteTool("also careful", LogSeverity.Warning);
+        _output.WriteTool("worse", LogSeverity.Error);
+        _output.WriteTool("chatter", LogSeverity.Verbose);
     }
 
     public void Dispose()

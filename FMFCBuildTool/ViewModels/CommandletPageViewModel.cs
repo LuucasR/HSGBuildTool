@@ -72,6 +72,8 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
         OpenLogFileCommand = new RelayCommand(Output.OpenCurrentLogFile);
         OpenLogFolderCommand = new RelayCommand(Output.OpenLogFolder);
 
+        LogExport = new LogExportViewModel(Output);
+
         _elapsed.PropertyChanged += (_, _) => OnPropertyChanged(nameof(ElapsedText));
 
         Context.PropertyChanged += (_, e) =>
@@ -110,6 +112,8 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
     public ICommand RetryFailedCommand { get; }
     public ICommand OpenLogFileCommand { get; }
     public ICommand OpenLogFolderCommand { get; }
+
+    public LogExportViewModel LogExport { get; }
     public ICommand SavePresetCommand { get; }
     public ICommand SaveAsPresetCommand { get; }
     public ICommand DeletePresetCommand { get; }
@@ -505,6 +509,11 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
 
         result.DurationSeconds = watch.Elapsed.TotalSeconds;
         result.ExitCode = exitCode;
+
+        // A skipped map never ran, so stamping it with a time would claim work that did
+        // not happen.
+        result.FinishedAt = state == MapRunState.Skipped ? null : DateTime.Now;
+
         result.State = state;
     }
 

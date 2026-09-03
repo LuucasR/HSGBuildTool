@@ -24,6 +24,8 @@
     <Geometry x:Key="IconStop">M4.8 4.8 H11.2 V11.2 H4.8 Z</Geometry>
     <Geometry x:Key="IconPlay">M5.4 3.4 L12.6 8 L5.4 12.6 Z</Geometry>
     <Geometry x:Key="IconDot">M8 5 A3 3 0 1 0 8.01 5 Z</Geometry>
+    <Geometry x:Key="IconExport">M8 2.6 V9.8 M5 7 L8 10 L11 7 M3.2 12.8 H12.8</Geometry>
+    <Geometry x:Key="IconCaretDown">M4.6 6.6 L8 10 L11.4 6.6</Geometry>
 
     <!--
         Icon inside a button. Stroke follows the button's Foreground, so it dims with the

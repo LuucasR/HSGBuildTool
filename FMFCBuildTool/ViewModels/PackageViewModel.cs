@@ -85,6 +85,8 @@ public sealed class PackageViewModel : ObservableObject, IBuildPage
         OpenLogFileCommand = new RelayCommand(_output.OpenCurrentLogFile);
         OpenLogFolderCommand = new RelayCommand(_output.OpenLogFolder);
 
+        LogExport = new LogExportViewModel(_output);
+
         SavePresetCommand = new RelayCommand(SavePreset);
         SaveAsPresetCommand = new RelayCommand(SaveAsPreset);
         DeletePresetCommand = new RelayCommand(DeletePreset, () => Presets.Count > 1);
@@ -116,6 +118,8 @@ public sealed class PackageViewModel : ObservableObject, IBuildPage
     public ICommand OpenOutputFolderCommand { get; }
     public ICommand OpenLogFileCommand { get; }
     public ICommand OpenLogFolderCommand { get; }
+
+    public LogExportViewModel LogExport { get; }
     public ICommand SavePresetCommand { get; }
     public ICommand SaveAsPresetCommand { get; }
     public ICommand DeletePresetCommand { get; }

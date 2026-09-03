@@ -57,6 +57,43 @@ public class MapResultsTests : IDisposable
     }
 
     /// <summary>
+    /// How long a map took and when it was done are different questions. A batch left to
+    /// run overnight is only readable the next morning if the results say the second one.
+    /// </summary>
+    [Fact]
+    public void Every_map_that_ran_is_stamped_with_when_it_finished()
+    {
+        Sta.Run(async () =>
+        {
+            var before = DateTime.Now.AddSeconds(-1);
+
+            var page = await BuildAsync(failing: new[] { "/Game/Maps/L_Hub" });
+
+            Assert.All(page.Results, r =>
+            {
+                Assert.NotNull(r.FinishedAt);
+                Assert.InRange(r.FinishedAt!.Value, before, DateTime.Now.AddSeconds(1));
+
+                // Date and clock time, not just a duration.
+                Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", r.FinishedAtText);
+            });
+
+            // A failed map still ran, so it is stamped like the rest.
+            Assert.NotNull(page.Results.Single(r => r.State == MapRunState.Failed).FinishedAt);
+        });
+    }
+
+    /// <summary>Nothing pending has a time on it — that would claim work that never happened.</summary>
+    [Fact]
+    public void A_map_that_has_not_run_has_no_finished_time()
+    {
+        var result = new MapResult { Map = "/Game/Maps/L_Arena" };
+
+        Assert.Null(result.FinishedAt);
+        Assert.Equal("", result.FinishedAtText);
+    }
+
+    /// <summary>
     /// One failing map must not take the others down — that is the entire point of one
     /// process per map — and the failures have to be identifiable afterwards.
     /// </summary>

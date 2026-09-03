@@ -1,0 +1,75 @@
+<UserControl x:Class="FMFCBuildTool.Views.LogExportButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Style="{StaticResource AppControl}">
+
+    <!--
+        "Export" with a severity picker. DataContext is a LogExportViewModel, so the same
+        control serves the log toolbar and the footer of every build page.
+
+        A Popup rather than a ContextMenu: the theme styles Border, GhostButton and Caption
+        already, and a ContextMenu would drop default Windows menu chrome into an otherwise
+        dark toolbar.
+    -->
+
+    <Grid>
+        <ToggleButton x:Name="Toggle"
+                      Style="{StaticResource ToolToggleButton}"
+                      ToolTip="Write the log out to a file, keeping only the severities you pick">
+            <StackPanel Orientation="Horizontal">
+                <Path Style="{StaticResource ButtonIcon}" Data="{StaticResource IconExport}"/>
+                <TextBlock Text="Export" VerticalAlignment="Center"/>
+                <Path Data="{StaticResource IconCaretDown}"
+                      Width="10"
+                      Height="10"
+                      Stretch="Uniform"
+                      Fill="Transparent"
+                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}"
+                      StrokeThickness="1.6"
+                      StrokeLineJoin="Round"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      VerticalAlignment="Center"
+                      Margin="6,1,0,0"/>
+            </StackPanel>
+        </ToggleButton>
+
+        <Popup IsOpen="{Binding IsChecked, ElementName=Toggle, Mode=TwoWay}"
+               PlacementTarget="{Binding ElementName=Toggle}"
+               Placement="Bottom"
+               VerticalOffset="4"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade"
+               Focusable="False">
+
+            <Border Background="{StaticResource Surface}"
+                    BorderBrush="{StaticResource BorderStrong}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="4"
+                    MinWidth="240">
+
+                <ItemsControl ItemsSource="{Binding Options}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource GhostButton}"
+                                    Height="Auto"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="10,7"
+                                    Click="OnOptionClicked">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Label}" Foreground="{StaticResource Text}"/>
+                                    <TextBlock Style="{StaticResource Caption}"
+                                               Foreground="{StaticResource TextDim}"
+                                               Margin="0,2,0,0"
+                                               Text="{Binding Description}"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

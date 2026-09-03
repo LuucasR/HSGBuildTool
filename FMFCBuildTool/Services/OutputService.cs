@@ -83,6 +83,37 @@ public sealed class OutputService : IDisposable
             return _entries.ToArray();
     }
 
+    /// <summary>
+    /// How many buffered lines fall inside <paramref name="scope"/>. Asked before an export
+    /// so "only errors" on a clean build says so instead of writing an empty file.
+    /// </summary>
+    public int CountFor(LogExportScope scope)
+    {
+        lock (_gate)
+            return _entries.Count(e => scope.Includes(e.Severity));
+    }
+
+    /// <summary>
+    /// Writes the buffered log to <paramref name="path"/>, keeping only the severities in
+    /// <paramref name="scope"/> and their original order. Returns the number of lines written.
+    /// </summary>
+    /// <remarks>
+    /// The buffer spans every task run since the app opened — <see cref="Clear"/> is the only
+    /// thing that empties it — so after a queue of package, navigation and lighting this
+    /// exports the errors of all three, not just the last step.
+    /// </remarks>
+    public int WriteFiltered(string path, LogExportScope scope)
+    {
+        var lines = Snapshot()
+            .Where(e => scope.Includes(e.Severity))
+            .Select(e => e.Text)
+            .ToList();
+
+        File.WriteAllLines(path, lines);
+
+        return lines.Count;
+    }
+
     /// <summary>Writes a line of process output, classified by <see cref="LogParser"/>.</summary>
     public void Write(string line) => Add(LogParser.Parse(line));
 

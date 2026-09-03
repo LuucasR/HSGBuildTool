@@ -101,7 +101,21 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <GridViewColumn Header="Package path" Width="520">
+                        <!-- How long it took and when it was done are different questions;
+                             an overnight batch is only readable the next morning with both. -->
+                        <GridViewColumn Header="Finished" Width="150">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding FinishedAtText}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Package path" Width="440">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Map}"

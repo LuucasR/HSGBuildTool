@@ -21,6 +21,10 @@ namespace FMFCBuildTool.ViewModels;
 ///
 /// It drives the pages themselves rather than re-implementing their builds, so a queued
 /// run is identical to a manual one, down to the log file per step.
+///
+/// Steps run in the order they were picked, not in the order the shell happens to hand
+/// the pages over. Ticking Lighting and then Package used to run Package first regardless,
+/// which is wrong whenever one step wants the output of another.
 /// </remarks>
 public sealed class BuildQueueViewModel : ObservableObject
 {
@@ -30,6 +34,12 @@ public sealed class BuildQueueViewModel : ObservableObject
 
     private bool _isRunning;
     private string _statusText = "Ready";
+
+    /// <summary>Stamps each pick so the order survives being unticked and ticked again.</summary>
+    private int _pickCounter;
+
+    /// <summary>A pick arrived mid-run; the cards are reordered once the run is over.</summary>
+    private bool _resortPending;
 
     public BuildQueueViewModel(
         AppConfig config,
@@ -44,13 +54,26 @@ public sealed class BuildQueueViewModel : ObservableObject
 
         Context = context;
 
-        foreach (var page in pages)
+        // The saved list is ordered, so its indexes are last session's pick order. It used
+        // to be read back with Contains, which threw that order away.
+        _pickCounter = config.QueueSteps.Count;
+
+        for (var i = 0; i < pages.Count; i++)
         {
+            var page = pages[i];
+            var savedIndex = config.QueueSteps.IndexOf(page.Kind);
+
             var step = new QueueStep(page)
             {
+                CanonicalIndex = i,
+
+                // Set before IsEnabled, and before the handler below is attached, so
+                // restoring a session does not look like a fresh pick.
+                PickedAt = savedIndex >= 0 ? savedIndex + 1 : 0,
+
                 // First run has no saved list: default to everything off rather than
                 // silently queueing a 40-minute cook the first time someone presses go.
-                IsEnabled = config.QueueSteps.Contains(page.Kind)
+                IsEnabled = savedIndex >= 0
             };
 
             step.PropertyChanged += (_, e) =>
@@ -58,12 +81,17 @@ public sealed class BuildQueueViewModel : ObservableObject
                 if (e.PropertyName != nameof(QueueStep.IsEnabled))
                     return;
 
+                step.PickedAt = step.IsEnabled ? ++_pickCounter : 0;
+
+                Resort();
                 PersistSteps();
                 RaiseCommandStates();
             };
 
             Steps.Add(step);
         }
+
+        Resort();
 
         RunQueueCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         StopCommand = new RelayCommand(Stop, () => _isRunning);
@@ -190,7 +218,47 @@ public sealed class BuildQueueViewModel : ObservableObject
         finally
         {
             IsRunning = false;
+
+            if (_resortPending)
+                Resort();
         }
+    }
+
+    /// <summary>
+    /// Puts the picked steps first, in the order they were picked, and the rest back in
+    /// the order the shell listed them. The list on screen is then literally the run order,
+    /// which is the only way a numbered queue is worth anything.
+    /// </summary>
+    private void Resort()
+    {
+        // Cards jumping around underneath a step that is currently building reads as a
+        // bug. RunAsync has already snapshotted its list, so a pick made mid-run only
+        // affects the next one anyway.
+        if (_isRunning)
+        {
+            _resortPending = true;
+            return;
+        }
+
+        _resortPending = false;
+
+        var ordered = Steps
+            .OrderBy(s => s.IsEnabled ? 0 : 1)
+            .ThenBy(s => s.IsEnabled ? s.PickedAt : s.CanonicalIndex)
+            .ToList();
+
+        for (var target = 0; target < ordered.Count; target++)
+        {
+            var current = Steps.IndexOf(ordered[target]);
+
+            // Move only when it actually moved: Move recreates the item container, and an
+            // untouched list should not mutate at all.
+            if (current != target)
+                Steps.Move(current, target);
+        }
+
+        for (var i = 0; i < Steps.Count; i++)
+            Steps[i].Position = Steps[i].IsEnabled ? i + 1 : 0;
     }
 
     private static string Reason(IBuildPage page)
@@ -230,6 +298,10 @@ public sealed class BuildQueueViewModel : ObservableObject
         _runner.Cancel();
     }
 
+    /// <summary>
+    /// Saves the picked steps in run order. <see cref="Resort"/> has already put
+    /// <see cref="Steps"/> in that order, so the list written here is the one restored.
+    /// </summary>
     private void PersistSteps()
     {
         _config.QueueSteps = Steps.Where(s => s.IsEnabled).Select(s => s.Page.Kind).ToList();
@@ -261,6 +333,7 @@ public enum QueueStepState
 public sealed class QueueStep : ObservableObject
 {
     private bool _isEnabled;
+    private int _position;
     private QueueStepState _state = QueueStepState.Disabled;
 
     public QueueStep(IBuildPage page)
@@ -269,6 +342,15 @@ public sealed class QueueStep : ObservableObject
     }
 
     public IBuildPage Page { get; }
+
+    /// <summary>Where the shell listed this page. Keeps the unpicked steps in a stable order.</summary>
+    public int CanonicalIndex { get; init; }
+
+    /// <summary>
+    /// When this step was picked, counting up for the life of the session. 0 while it is
+    /// not picked, so unticking and reticking sends it to the back of the queue.
+    /// </summary>
+    public int PickedAt { get; set; }
 
     public string Label => Page.Kind switch
     {
@@ -295,6 +377,20 @@ public sealed class QueueStep : ObservableObject
                 State = value ? QueueStepState.Waiting : QueueStepState.Disabled;
         }
     }
+
+    /// <summary>1-based place in the run, or 0 when the step is not picked.</summary>
+    public int Position
+    {
+        get => _position;
+        set
+        {
+            if (SetProperty(ref _position, value))
+                OnPropertyChanged(nameof(PositionLabel));
+        }
+    }
+
+    /// <summary>The badge on the card: "1", "2", "3", or nothing at all.</summary>
+    public string PositionLabel => _position > 0 ? _position.ToString() : "";
 
     public QueueStepState State
     {

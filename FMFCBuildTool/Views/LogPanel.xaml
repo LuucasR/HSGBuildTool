@@ -105,6 +105,10 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Copy takes what the chips and the search box left on screen; Export
+                         asks the severity question on its own, against the whole log. -->
+                    <views:LogExportButton DataContext="{Binding LogExport}" Margin="0,0,6,0"/>
+
                     <Button Style="{StaticResource ToolButton}"
                             Content="Clear"
                             Margin="0,0,6,0"

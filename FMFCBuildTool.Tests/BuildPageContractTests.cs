@@ -45,6 +45,9 @@ public class BuildPageContractTests : IDisposable
             Assert.NotNull(subject.OpenLogFileCommand);
             Assert.NotNull(subject.OpenLogFolderCommand);
 
+            Assert.NotNull(subject.LogExport);
+            Assert.NotEmpty(subject.LogExport.Options);
+
             Assert.NotNull(subject.StatusText);
             Assert.NotNull(subject.ElapsedText);
             Assert.NotNull(subject.CommandPreview);

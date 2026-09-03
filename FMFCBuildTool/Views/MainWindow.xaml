@@ -4,6 +4,7 @@
         xmlns:views="clr-namespace:FMFCBuildTool.Views"
         xmlns:vm="clr-namespace:FMFCBuildTool.ViewModels"
         Title="FMFC Build Tool"
+        Icon="/Resources/buildtoollogo.png"
         Width="1440"
         Height="900"
         MinWidth="1020"
@@ -140,6 +141,19 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
+                    <!-- DecodePixelHeight so the 1254px source is not held in memory at
+                         full size for a 26px mark. -->
+                    <Image Width="26"
+                           Height="26"
+                           Margin="0,0,10,0"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           ToolTip="Heroic Spirit Games — Build Tool">
+                        <Image.Source>
+                            <BitmapImage UriSource="/Resources/buildtoollogo.png" DecodePixelHeight="52"/>
+                        </Image.Source>
+                    </Image>
+
                     <TextBlock Text="FMFC" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
                     <TextBlock Text="Build Tool" FontSize="15" Margin="6,0,0,0" Foreground="{StaticResource Text}"/>
                 </StackPanel>

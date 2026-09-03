@@ -36,6 +36,12 @@ public interface IBuildPage
 
     ICommand OpenLogFolderCommand { get; }
 
+    /// <summary>
+    /// Writes the log out filtered by severity. On the page rather than only in the log
+    /// dock, because "send me the errors" happens the moment a build ends, wherever you are.
+    /// </summary>
+    LogExportViewModel LogExport { get; }
+
     bool IsRunning { get; }
 
     /// <summary>False while validation is failing or another page is already building.</summary>

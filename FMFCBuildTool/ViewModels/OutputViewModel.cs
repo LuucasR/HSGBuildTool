@@ -59,6 +59,8 @@ public sealed class OutputViewModel : ObservableObject
         OpenLogFileCommand = new RelayCommand(_output.OpenCurrentLogFile);
         OpenLogFolderCommand = new RelayCommand(_output.OpenLogFolder);
 
+        LogExport = new LogExportViewModel(output);
+
         CopyVisibleCommand = new RelayCommand(CopyVisible);
         CopyIssuesCommand = new RelayCommand(CopyIssues, () => Issues.Count > 0);
 
@@ -83,6 +85,9 @@ public sealed class OutputViewModel : ObservableObject
     /// the single worst thing about reading engine output; this is that list.
     /// </summary>
     public RangeObservableCollection<LogEntry> Issues { get; } = new();
+
+    /// <summary>The "Export" menu. Shared with the build pages so both offer the same thing.</summary>
+    public LogExportViewModel LogExport { get; }
 
     public ICommand ClearCommand { get; }
     public ICommand OpenLogFileCommand { get; }

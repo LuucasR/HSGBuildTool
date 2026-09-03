@@ -43,7 +43,7 @@
                         <GridViewColumn Header="When" Width="150">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding StartedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                    <TextBlock Text="{Binding StartedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
                                                FontFamily="{StaticResource MonoFont}"
                                                FontSize="{StaticResource FontSizeMono}"
                                                Foreground="{StaticResource TextMuted}"
