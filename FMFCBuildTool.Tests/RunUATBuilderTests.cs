@@ -15,6 +15,7 @@ public class RunUATBuilderTests
         Root = @"C:\UE_5.4",
         RunUAT = @"C:\UE_5.4\Engine\Build\BatchFiles\RunUAT.bat",
         EditorCmd = @"C:\UE_5.4\Engine\Binaries\Win64\UnrealEditor-Cmd.exe",
+        BuildBat = @"C:\UE_5.4\Engine\Build\BatchFiles\Build.bat",
         Version = "5.4",
         IsInstalled = installed
     };

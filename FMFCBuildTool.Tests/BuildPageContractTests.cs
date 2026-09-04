@@ -27,7 +27,7 @@ public class BuildPageContractTests : IDisposable
         _output = new OutputService(Path.Combine(_root, "Logs"));
     }
 
-    public static TheoryData<string> PageNames => new() { "Package", "Navigation", "Lighting" };
+    public static TheoryData<string> PageNames => new() { "Package", "Navigation", "Lighting", "Compiler" };
 
     [Theory]
     [MemberData(nameof(PageNames))]
@@ -74,15 +74,16 @@ public class BuildPageContractTests : IDisposable
     }
 
     /// <summary>
-    /// Package runs one opaque RunUAT invocation; the commandlet pages count maps and can
-    /// report real progress. The bar picks its mode from this.
+    /// Package and Compiler each run one opaque external process; the commandlet pages
+    /// count maps and can report real progress. The bar picks its mode from this.
     /// </summary>
     [Fact]
-    public void Only_package_reports_indeterminate_progress()
+    public void Only_single_process_pages_report_indeterminate_progress()
     {
         Sta.Run(() =>
         {
             Assert.True(Create("Package").IsProgressIndeterminate);
+            Assert.True(Create("Compiler").IsProgressIndeterminate);
             Assert.False(Create("Navigation").IsProgressIndeterminate);
             Assert.False(Create("Lighting").IsProgressIndeterminate);
 
@@ -98,6 +99,7 @@ public class BuildPageContractTests : IDisposable
 
         return page switch
         {
+            "Compiler" => new CompilerViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             "Navigation" => new NavigationViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             "Lighting" => new LightingViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             _ => new PackageViewModel(context, runner, _output, config, new BuildHistoryService(config))

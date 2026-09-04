@@ -11,6 +11,20 @@ public class BuildHistoryServiceTests
     private const string Project = @"C:\Games\FMFC\FMFC.uproject";
     private const string Other = @"C:\Games\Other\Other.uproject";
 
+    /// <summary>
+    /// The History grid renders KindLabel, so a kind missing from that switch shows up as
+    /// the raw key. Cheap to get wrong when a page is added, and invisible until you look.
+    /// </summary>
+    [Theory]
+    [InlineData("compile", "Compiler")]
+    [InlineData("package", "Package")]
+    [InlineData("nav", "Navigation")]
+    [InlineData("lighting", "Lighting")]
+    public void Every_kind_has_a_readable_label(string kind, string label)
+    {
+        Assert.Equal(label, new BuildRecord { Kind = kind }.KindLabel);
+    }
+
     [Fact]
     public void Records_newest_first()
     {

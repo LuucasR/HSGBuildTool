@@ -137,7 +137,7 @@ public sealed class OutputService : IDisposable
 
     /// <summary>
     /// Opens a fresh log file for a run. <paramref name="label"/> identifies the kind of
-    /// build ("package", "nav", "lighting") in the file name. <paramref name="projectFile"/>
+    /// build ("compile", "package", "nav", "lighting") in the file name. <paramref name="projectFile"/>
     /// is optional and only used to stamp the log with the commit being built.
     /// </summary>
     public void BeginSession(string label, string projectName, string projectFile = "")

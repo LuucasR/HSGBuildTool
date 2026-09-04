@@ -5,19 +5,19 @@ using FMFCBuildTool.Models;
 namespace FMFCBuildTool.ViewModels;
 
 /// <summary>
-/// What every build page (Package, Navigation, Lighting) exposes to the shared
+/// What every build page (Compiler, Package, Navigation, Lighting) exposes to the shared
 /// <see cref="Views.BuildActionBar"/> and to the build queue.
 /// </summary>
 /// <remarks>
 /// The three pages carried three near-identical footers that had already drifted apart —
 /// Package grew an elapsed clock and a "Save .bat" button that the other two never got,
 /// and neither of the others could open the log of the run they had just produced. One
-/// bar now renders all three, and this interface is what keeps them bindable by the same
+/// bar now renders them all, and this interface is what keeps them bindable by the same
 /// names. XAML binds by name and would fail silently on a typo; the compiler will not.
 /// </remarks>
 public interface IBuildPage
 {
-    /// <summary>"package", "nav" or "lighting". Identifies the page in history and the queue.</summary>
+    /// <summary>"compile", "package", "nav" or "lighting". Identifies the page in history and the queue.</summary>
     string Kind { get; }
 
     /// <summary>Verb on the primary button, e.g. "BUILD NAVIGATION".</summary>

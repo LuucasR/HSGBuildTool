@@ -213,6 +213,7 @@ public class MapResultsTests : IDisposable
         {
             Root = _root,
             RunUAT = "unused",
+            BuildBat = "unused",
             EditorCmd = Path.Combine(Environment.SystemDirectory, "cmd.exe")
         };
 

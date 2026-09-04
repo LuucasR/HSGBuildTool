@@ -34,6 +34,10 @@
     <Window.Resources>
 
         <!-- Page host: view-model type decides which UserControl renders. -->
+        <DataTemplate DataType="{x:Type vm:CompilerViewModel}">
+            <views:CompilerPage/>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:PackageViewModel}">
             <views:PackageView/>
         </DataTemplate>
@@ -251,6 +255,19 @@
                     <StackPanel Margin="0,12,8,0">
 
                         <TextBlock Style="{StaticResource SectionLabel}" Text="BUILD" Margin="16,0,0,6"/>
+
+                        <!-- Before Package, because compiling is what you do before a cook:
+                             a missing class should cost seconds, not half of a cook. -->
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Compiler"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Compiler}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M6 4.5 L2.2 8 L6 11.5 M10 4.5 L13.8 8 L10 11.5"/>
+                                <TextBlock Text="Compiler" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
 
                         <RadioButton Style="{StaticResource RailItem}"
                                      Command="{Binding ShowPageCommand}"

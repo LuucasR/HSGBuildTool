@@ -131,6 +131,7 @@ public class BuildRunStateTests : IDisposable
         {
             Root = _root,
             RunUAT = "unused",
+            BuildBat = "unused",
 
             // Long enough that the assertions land while it is genuinely still running.
             EditorCmd = Path.Combine(Environment.SystemDirectory, "PING.EXE")

@@ -354,6 +354,7 @@ public sealed class QueueStep : ObservableObject
 
     public string Label => Page.Kind switch
     {
+        "compile" => "Compiler",
         "package" => "Package",
         "nav" => "Navigation",
         "lighting" => "Lighting",
@@ -362,6 +363,7 @@ public sealed class QueueStep : ObservableObject
 
     public string Description => Page.Kind switch
     {
+        "compile" => "UnrealBuildTool on the selected target and configuration",
         "package" => "RunUAT BuildCookRun with the active preset",
         "nav" => "World Partition navigation data for the selected maps",
         "lighting" => "Static lighting for the selected maps",

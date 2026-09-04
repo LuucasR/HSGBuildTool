@@ -11,6 +11,9 @@ public sealed class EnginePaths
     public required string RunUAT { get; init; }
     public required string EditorCmd { get; init; }
 
+    /// <summary>Engine\Build\BatchFiles\Build.bat — UnrealBuildTool's entry point, used by the Compiler page.</summary>
+    public required string BuildBat { get; init; }
+
     /// <summary>Display version, e.g. "5.4". "Source" for GUID-associated source builds.</summary>
     public string Version { get; init; } = "";
 

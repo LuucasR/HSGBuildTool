@@ -33,6 +33,16 @@ public class ProjectSettings
 
     public List<CommandletPreset> LightingPresets { get; set; } = new();
 
+    /// <summary>
+    /// The Compiler page's target, e.g. "MyProjectEditor". Two plain properties rather than
+    /// a preset list: a compile is a target and a configuration, and there is nothing else
+    /// to name and save.
+    /// </summary>
+    public string CompileTarget { get; set; } = "";
+
+    /// <summary>"Debug", "Development" or "Shipping" as the page shows them.</summary>
+    public string CompileConfiguration { get; set; } = "Development";
+
     public BuildPreset GetActivePreset()
     {
         if (Presets.Count == 0)

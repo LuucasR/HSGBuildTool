@@ -53,6 +53,7 @@ public sealed class MainViewModel : ObservableObject
 
         LogViewModel = new OutputViewModel(output, config);
 
+        Compiler = new CompilerViewModel(context, runner, output, config, History);
         Package = new PackageViewModel(context, runner, output, config, History);
         Navigation = new NavigationViewModel(context, runner, output, config, History);
         Lighting = new LightingViewModel(context, runner, output, config, History);
@@ -65,7 +66,9 @@ public sealed class MainViewModel : ObservableObject
             output,
             runner,
             context,
-            new IBuildPage[] { Package, Navigation, Lighting });
+            // Compiler first: it is the step that comes before a cook, so it is the order
+            // the queue offers on a list nobody has picked yet.
+            new IBuildPage[] { Compiler, Package, Navigation, Lighting });
 
         BrowseProjectCommand = new RelayCommand(BrowseProject);
         ShowPageCommand = new RelayCommand(p => CurrentPageKey = p?.ToString() ?? "Package");
@@ -142,6 +145,7 @@ public sealed class MainViewModel : ObservableObject
 
     public BuildHistoryService History { get; }
 
+    public CompilerViewModel Compiler { get; }
     public PackageViewModel Package { get; }
     public NavigationViewModel Navigation { get; }
     public LightingViewModel Lighting { get; }
@@ -191,8 +195,8 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>
     /// Drives the Windows taskbar button, so a twenty-minute cook can be watched from the
-    /// taskbar instead of by keeping the window on screen. Indeterminate for Package,
-    /// which has no readable progress; red for a build that failed.
+    /// taskbar instead of by keeping the window on screen. Indeterminate for Package and
+    /// Compiler, which have no readable progress; red for a build that failed.
     /// </summary>
     public TaskbarItemProgressState TaskbarProgressState
     {
@@ -221,7 +225,7 @@ public sealed class MainViewModel : ObservableObject
     private IBuildPage? RunningPage =>
         BuildPages.FirstOrDefault(p => p.IsRunning);
 
-    private IBuildPage[] BuildPages => new IBuildPage[] { Package, Navigation, Lighting };
+    private IBuildPage[] BuildPages => new IBuildPage[] { Compiler, Package, Navigation, Lighting };
 
     /// <summary>What the status bar says on the left.</summary>
     public string StatusSummary
@@ -268,6 +272,7 @@ public sealed class MainViewModel : ObservableObject
 
             CurrentPage = value switch
             {
+                "Compiler" => Compiler,
                 "Navigation" => Navigation,
                 "Lighting" => Lighting,
                 "Queue" => Queue,
@@ -342,6 +347,7 @@ public sealed class MainViewModel : ObservableObject
 
         // Every page reloads from the same context, so Package and Navigation can no
         // longer disagree about which project or engine is in play.
+        await Compiler.OnProjectChangedAsync();
         await Package.OnProjectChangedAsync();
         await Navigation.OnProjectChangedAsync();
         await Lighting.OnProjectChangedAsync();

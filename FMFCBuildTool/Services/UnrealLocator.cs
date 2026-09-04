@@ -22,6 +22,7 @@ public static class UnrealLocator
 {
     private const string RunUATRelative = @"Engine\Build\BatchFiles\RunUAT.bat";
     private const string EditorCmdRelative = @"Engine\Binaries\Win64\UnrealEditor-Cmd.exe";
+    private const string BuildBatRelative = @"Engine\Build\BatchFiles\Build.bat";
 
     /// <summary>
     /// Resolves the engine for <paramref name="projectFile"/>, preferring an explicit
@@ -118,6 +119,11 @@ public static class UnrealLocator
         var runUAT = Path.Combine(root, RunUATRelative);
         var editorCmd = Path.Combine(root, EditorCmdRelative);
 
+        // Not part of the gate below: Build.bat is only needed by the Compiler page, and an
+        // engine that can still cook and package should not stop resolving over its absence.
+        // CompileBuilder checks it and says so on that page instead.
+        var buildBat = Path.Combine(root, BuildBatRelative);
+
         // Both are required: the old code validated RunUAT for packaging but not
         // UnrealEditor-Cmd for the nav/lighting commandlets, so a broken editor path
         // only failed once a build was already underway.
@@ -129,6 +135,7 @@ public static class UnrealLocator
             Root = root,
             RunUAT = runUAT,
             EditorCmd = editorCmd,
+            BuildBat = buildBat,
             Version = version,
             Source = source,
             IsInstalled = File.Exists(Path.Combine(root, "Engine", "Build", "InstalledBuild.txt"))
