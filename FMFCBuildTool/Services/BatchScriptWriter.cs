@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using FMFCBuildTool.Models;
 
 namespace FMFCBuildTool.Services;
 
@@ -37,6 +38,27 @@ public static class BatchScriptWriter
         string exe,
         IReadOnlyList<string> maps,
         Func<string, IReadOnlyList<string>> argumentsFor)
+        => ForEachMap(
+            header,
+            workingDirectory,
+            exe,
+            maps,
+            map => new[] { new CommandletPass("", argumentsFor(map)) });
+
+    /// <summary>
+    /// The same loop where a map takes more than one invocation, as HLOD does.
+    /// </summary>
+    /// <remarks>
+    /// Within a map the passes are sequential and abort on the first failure, matching
+    /// the UI: building HLODs whose delete pass just failed produces a level nobody
+    /// asked for. Between maps nothing aborts, so one bad map still does not cost the run.
+    /// </remarks>
+    public static string ForEachMap(
+        string header,
+        string workingDirectory,
+        string exe,
+        IReadOnlyList<string> maps,
+        Func<string, IReadOnlyList<CommandletPass>> passesFor)
     {
         var script = new StringBuilder();
 
@@ -48,16 +70,38 @@ public static class BatchScriptWriter
         for (var i = 0; i < maps.Count; i++)
         {
             var map = maps[i];
+            var passes = passesFor(map);
 
             script.AppendLine($"echo [{i + 1}/{maps.Count}] {map}");
-            script.AppendLine($"\"{exe}\" {string.Join(" ", argumentsFor(map))}");
 
-            // Deliberately does not abort: the point of one process per map is that a
-            // single bad map does not cost you the whole run.
-            script.AppendLine("if errorlevel 1 (");
-            script.AppendLine($"    echo FAILED: {map}");
-            script.AppendLine("    set FMFC_FAILED=1");
-            script.AppendLine(")");
+            // The label only exists to let a reader of the .bat tell the passes apart, so
+            // a single-pass map is written exactly as it always was — no label, no jump.
+            var done = $":map{i + 1}_done";
+
+            for (var pass = 0; pass < passes.Count; pass++)
+            {
+                var step = passes[pass].Label.Length > 0 ? $" - {passes[pass].Label}" : "";
+
+                if (step.Length > 0)
+                    script.AppendLine($"echo  {step.TrimStart()}");
+
+                script.AppendLine($"\"{exe}\" {string.Join(" ", passes[pass].Arguments)}");
+
+                // Deliberately does not abort the run: the point of one process per map is
+                // that a single bad map does not cost you the whole run.
+                script.AppendLine("if errorlevel 1 (");
+                script.AppendLine($"    echo FAILED: {map}{step}");
+                script.AppendLine("    set FMFC_FAILED=1");
+
+                if (pass < passes.Count - 1)
+                    script.AppendLine($"    goto {done}");
+
+                script.AppendLine(")");
+            }
+
+            if (passes.Count > 1)
+                script.AppendLine(done);
+
             script.AppendLine();
         }
 

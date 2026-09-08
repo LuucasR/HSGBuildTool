@@ -17,14 +17,20 @@ namespace FMFCBuildTool.ViewModels;
 
 /// <summary>
 /// Shared behaviour for the pages that drive UnrealEditor-Cmd commandlets over a set
-/// of maps (Navigation, Lighting): named map presets, validation, command preview, and a
-/// sequential per-map run with progress and per-map results.
+/// of maps (Navigation, Lighting, HLOD): named map presets, validation, command preview,
+/// and a sequential per-map run with progress and per-map results.
 /// </summary>
 /// <remarks>
 /// The per-map loop is the important part. The old navigation code passed every
 /// selected map to one invocation as space-separated positional arguments, which the
 /// commandlet cannot consume — only the first map was ever built, and the rest were
 /// reported as successful.
+///
+/// Each map's turn is a list of <see cref="CommandletPass"/>es rather than one command.
+/// Navigation and Lighting have exactly one, so nothing changes for them; HLOD deletes
+/// and then builds, which has to be two runs of the commandlet. A map stops at its first
+/// failing pass — there is no point building HLODs whose delete pass just failed — and
+/// counts as one failure, so the results panel still reads one row per map.
 /// </remarks>
 public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
 {
@@ -118,7 +124,7 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
     public ICommand SaveAsPresetCommand { get; }
     public ICommand DeletePresetCommand { get; }
 
-    /// <summary>"nav" or "lighting" — names the log file, the history entry and the queue step.</summary>
+    /// <summary>"nav", "lighting" or "hlod" — names the log file, the history entry and the queue step.</summary>
     public abstract string Kind { get; }
 
     /// <summary>Verb shown on the primary button, e.g. "BUILD NAVIGATION".</summary>
@@ -135,7 +141,16 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
     /// <summary>Human-readable name of the operation, used in log lines.</summary>
     protected abstract string ActionName { get; }
 
+    /// <summary>The page's single invocation for a map. Pages with more than one override
+    /// <see cref="PassesFor"/> instead, and this returns their main one.</summary>
     protected abstract IReadOnlyList<string> ArgumentsFor(string map);
+
+    /// <summary>
+    /// Everything that has to run for one map, in order. One unnamed pass by default:
+    /// naming the step would only repeat the page on a page that has a single one.
+    /// </summary>
+    protected virtual IReadOnlyList<CommandletPass> PassesFor(string map)
+        => new[] { new CommandletPass("", ArgumentsFor(map)) };
 
     protected abstract IReadOnlyList<string> ValidateInputs(IReadOnlyList<string> maps);
 
@@ -370,59 +385,20 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
                     break;
                 }
 
-                var map = maps[i];
                 var result = Results[i];
 
                 result.State = MapRunState.Running;
 
-                StatusText = $"{ActionName}: {i + 1} of {maps.Count} — {map}";
-                Progress = i * 100.0 / maps.Count;
+                var state = await RunMapAsync(engine, maps, i, result);
 
-                var commandLine = string.Join(" ", ArgumentsFor(map));
-                var mapWatch = Stopwatch.StartNew();
+                if (state == MapRunState.Failed)
+                    failed.Add(maps[i]);
 
-                Output.WriteTool($"[{i + 1}/{maps.Count}] {engine.EditorCmd} {commandLine}");
-
-                int exitCode;
-
-                try
+                if (state == MapRunState.Skipped)
                 {
-                    exitCode = await Runner.RunAsync(
-                        engine.EditorCmd,
-                        commandLine,
-                        Context.ProjectDirectory,
-                        $"{ActionName} ({map})",
-                        _cancellation.Token);
-                }
-                catch (Exception ex)
-                {
-                    Output.WriteTool($"{map}: could not start — {ex.Message}", LogSeverity.Error);
-
-                    Finish(result, mapWatch, MapRunState.Failed, -1);
-                    failed.Add(map);
-
-                    continue;
-                }
-
-                if (_cancellation.IsCancellationRequested)
-                {
-                    Finish(result, mapWatch, MapRunState.Skipped, exitCode);
                     stopped = true;
 
                     break;
-                }
-
-                if (exitCode == 0)
-                {
-                    Finish(result, mapWatch, MapRunState.Succeeded, 0);
-                    Output.WriteTool($"{map}: OK");
-                }
-                else
-                {
-                    Finish(result, mapWatch, MapRunState.Failed, exitCode);
-                    Output.WriteTool($"{map}: FAILED (exit code {exitCode})", LogSeverity.Error);
-
-                    failed.Add(map);
                 }
             }
 
@@ -452,6 +428,89 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
             RaiseResultState();
             UpdateEstimate();
         }
+    }
+
+    /// <summary>
+    /// Runs every pass of one map in order, stopping at the first that fails or is
+    /// cancelled, and stamps the result. Returns what became of the map as a whole.
+    /// </summary>
+    /// <remarks>
+    /// The map is one row in the results panel however many passes it took, so a failed
+    /// delete pass fails the map rather than letting the build pass run against HLODs
+    /// that are still there.
+    /// </remarks>
+    private async Task<MapRunState> RunMapAsync(
+        EnginePaths engine,
+        IReadOnlyList<string> maps,
+        int index,
+        MapResult result)
+    {
+        var map = maps[index];
+        var passes = PassesFor(map);
+        var watch = Stopwatch.StartNew();
+
+        for (var pass = 0; pass < passes.Count; pass++)
+        {
+            if (_cancellation!.IsCancellationRequested)
+            {
+                Finish(result, watch, MapRunState.Skipped, 0);
+
+                return MapRunState.Skipped;
+            }
+
+            var step = passes[pass].Label.Length > 0 ? $" — {passes[pass].Label}" : "";
+
+            StatusText = $"{ActionName}: {index + 1} of {maps.Count} — {map}{step}";
+
+            // Each pass advances the bar by a fraction of the map's share, so a two-pass
+            // HLOD build does not sit on the same number for twice as long.
+            Progress = (index + (double)pass / passes.Count) * 100.0 / maps.Count;
+
+            var commandLine = string.Join(" ", passes[pass].Arguments);
+
+            Output.WriteTool($"[{index + 1}/{maps.Count}]{step} {engine.EditorCmd} {commandLine}");
+
+            int exitCode;
+
+            try
+            {
+                exitCode = await Runner.RunAsync(
+                    engine.EditorCmd,
+                    commandLine,
+                    Context.ProjectDirectory,
+                    $"{ActionName} ({map}{step})",
+                    _cancellation.Token);
+            }
+            catch (Exception ex)
+            {
+                Output.WriteTool($"{map}{step}: could not start — {ex.Message}", LogSeverity.Error);
+
+                Finish(result, watch, MapRunState.Failed, -1);
+
+                return MapRunState.Failed;
+            }
+
+            if (_cancellation.IsCancellationRequested)
+            {
+                Finish(result, watch, MapRunState.Skipped, exitCode);
+
+                return MapRunState.Skipped;
+            }
+
+            if (exitCode != 0)
+            {
+                Output.WriteTool($"{map}{step}: FAILED (exit code {exitCode})", LogSeverity.Error);
+
+                Finish(result, watch, MapRunState.Failed, exitCode);
+
+                return MapRunState.Failed;
+            }
+        }
+
+        Finish(result, watch, MapRunState.Succeeded, 0);
+        Output.WriteTool($"{map}: OK");
+
+        return MapRunState.Succeeded;
     }
 
     /// <summary>
@@ -728,7 +787,7 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
                 Context.ProjectDirectory,
                 engine.EditorCmd,
                 maps,
-                ArgumentsFor);
+                PassesFor);
 
             File.WriteAllText(dialog.FileName, script);
 
@@ -761,16 +820,32 @@ public abstract class CommandletPageViewModel : ObservableObject, IBuildPage
 
         ValidationMessage = string.Join("  ·  ", problems);
 
-        // Preview the first selected map: every invocation is identical apart from the map.
+        // Preview the first selected map: every map's invocations are identical apart
+        // from the map, so showing its passes shows the shape of the whole run.
         CommandPreview = Context is { HasProject: true, Engine: { } engine } && maps.Count > 0
-            ? $"\"{engine.EditorCmd}\" {string.Join(" ", ArgumentsFor(maps[0]))}" +
-              (maps.Count > 1 ? $"{Environment.NewLine}… and {maps.Count - 1} more invocation(s), one per map." : "")
+            ? Preview(engine, maps)
             : "";
 
         UpdateEstimate();
 
         OnPropertyChanged(nameof(CanRun));
         RaiseCommandStates();
+    }
+
+    private string Preview(EnginePaths engine, IReadOnlyList<string> maps)
+    {
+        var passes = PassesFor(maps[0]);
+
+        var text = string.Join(
+            Environment.NewLine,
+            passes.Select(p => $"\"{engine.EditorCmd}\" {string.Join(" ", p.Arguments)}"));
+
+        if (maps.Count == 1)
+            return text;
+
+        return text + Environment.NewLine + (passes.Count == 1
+            ? $"… and {maps.Count - 1} more invocation(s), one per map."
+            : $"… and {maps.Count - 1} more map(s), {passes.Count} invocations each.");
     }
 
     private void UpdateEstimate()

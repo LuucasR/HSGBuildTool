@@ -9,7 +9,7 @@ using Xunit;
 namespace FMFCBuildTool.Tests;
 
 /// <summary>
-/// The three build pages render through one shared BuildActionBar, which binds by name.
+/// Every build page renders through one shared BuildActionBar, which binds by name.
 /// A missing or misnamed member fails silently at runtime as a blank button, so the
 /// contract is asserted here instead.
 /// </summary>
@@ -27,7 +27,7 @@ public class BuildPageContractTests : IDisposable
         _output = new OutputService(Path.Combine(_root, "Logs"));
     }
 
-    public static TheoryData<string> PageNames => new() { "Package", "Navigation", "Lighting", "Compiler" };
+    public static TheoryData<string> PageNames => new() { "Package", "Navigation", "Lighting", "Hlod", "Compiler" };
 
     [Theory]
     [MemberData(nameof(PageNames))]
@@ -57,7 +57,7 @@ public class BuildPageContractTests : IDisposable
         });
     }
 
-    /// <summary>Stop is dead until something is running, on all three pages.</summary>
+    /// <summary>Stop is dead until something is running, on every page.</summary>
     [Theory]
     [MemberData(nameof(PageNames))]
     public void Stop_is_disabled_while_idle(string page)
@@ -86,6 +86,7 @@ public class BuildPageContractTests : IDisposable
             Assert.True(Create("Compiler").IsProgressIndeterminate);
             Assert.False(Create("Navigation").IsProgressIndeterminate);
             Assert.False(Create("Lighting").IsProgressIndeterminate);
+            Assert.False(Create("Hlod").IsProgressIndeterminate);
 
             return Task.CompletedTask;
         });
@@ -102,6 +103,7 @@ public class BuildPageContractTests : IDisposable
             "Compiler" => new CompilerViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             "Navigation" => new NavigationViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             "Lighting" => new LightingViewModel(context, runner, _output, config, new BuildHistoryService(config)),
+            "Hlod" => new HlodViewModel(context, runner, _output, config, new BuildHistoryService(config)),
             _ => new PackageViewModel(context, runner, _output, config, new BuildHistoryService(config))
         };
     }

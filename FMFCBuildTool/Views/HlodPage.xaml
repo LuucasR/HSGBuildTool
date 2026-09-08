@@ -1,0 +1,125 @@
+<UserControl x:Class="FMFCBuildTool.Views.HlodPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:FMFCBuildTool.Views"
+             Style="{StaticResource AppPage}">
+
+    <UserControl.Resources>
+        <Style x:Key="OptionCheck" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="0,0,22,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- The builder belongs to the title: it is the one choice that changes what the
+             rest of the page means. -->
+        <views:PageHeader Title="HLOD"
+                          Subtitle="Runs WorldPartitionBuilderCommandlet per selected map: one invocation to delete the existing HLODs, a second to set up and build the new ones. Simplygon needs its plugin enabled in the project.">
+            <views:PageHeader.Actions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Builder"/>
+                    <!-- An explicit ItemTemplate, not DisplayMemberPath: the shared ComboBox
+                         template draws the closed box from SelectionBoxItemTemplate, which
+                         DisplayMemberPath alone does not fill in — it renders the record. -->
+                    <ComboBox Width="170"
+                              Margin="0,0,20,0"
+                              ItemsSource="{Binding Builders}"
+                              SelectedValuePath="Id"
+                              SelectedValue="{Binding Builder}"
+                              ToolTip="Simplygon, or Unreal's own WorldPartitionHLODsBuilder">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Display}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <views:PresetPicker/>
+                </StackPanel>
+            </views:PageHeader.Actions>
+        </views:PageHeader>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="20,0,20,12">
+            <StackPanel>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="PASSES"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Delete existing HLODs"
+                              IsChecked="{Binding DeleteHlods}"
+                              ToolTip="-DeleteHLODs, run first as its own invocation. The commandlet cannot delete and rebuild in one pass."/>
+
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Setup HLODs"
+                              IsChecked="{Binding SetupHlods}"
+                              ToolTip="-SetupHLODs — creates the HLOD actors the build then fills in"/>
+
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Build HLODs"
+                              IsChecked="{Binding BuildHlods}"
+                              ToolTip="-BuildHLODs — the actual mesh generation, and the long part of the run"/>
+                </StackPanel>
+
+                <Separator/>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="FLAGS"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Allow commandlet rendering"
+                              IsChecked="{Binding AllowCommandletRendering}"
+                              ToolTip="-AllowCommandletRendering. HLOD generation needs the renderer; leaving this off is what makes a build produce nothing."/>
+
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Wait for mutex"
+                              IsChecked="{Binding WaitMutex}"
+                              ToolTip="-WaitMutex — queue behind another editor on this project instead of failing outright"/>
+
+                    <CheckBox Style="{StaticResource OptionCheck}"
+                              Content="Unattended"
+                              IsChecked="{Binding Unattended}"
+                              ToolTip="-Unattended. The process runs with no window, so unticking this lets a modal dialog hang the build invisibly."/>
+                </StackPanel>
+
+                <Separator/>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="EXTRA ARGUMENTS"/>
+
+                <!-- The plain TextBox style, not MonoTextBox: that one is the read-only
+                     command preview, and this is the one field on the page you type into. -->
+                <TextBox Margin="0,8,0,0"
+                         FontFamily="{StaticResource MonoFont}"
+                         FontSize="{StaticResource FontSizeMono}"
+                         Text="{Binding ExtraArguments, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Appended verbatim to every invocation, e.g. -DistributedBuild -BuilderIdx=0"/>
+
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="20,0,20,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="MAPS"/>
+
+                <views:MapListControl Grid.Row="1" DataContext="{Binding MapSelection}"/>
+            </Grid>
+        </Border>
+
+        <views:MapResultsPanel Grid.Row="3" Margin="20,0,20,12"/>
+
+        <views:BuildActionBar Grid.Row="4"/>
+    </Grid>
+</UserControl>

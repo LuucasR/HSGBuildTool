@@ -57,6 +57,7 @@ public sealed class MainViewModel : ObservableObject
         Package = new PackageViewModel(context, runner, output, config, History);
         Navigation = new NavigationViewModel(context, runner, output, config, History);
         Lighting = new LightingViewModel(context, runner, output, config, History);
+        Hlod = new HlodViewModel(context, runner, output, config, History);
         Settings = new SettingsViewModel(config, configService, context, output, ResolveEngine);
 
         HistoryPage = new HistoryViewModel(History, context, output);
@@ -68,7 +69,7 @@ public sealed class MainViewModel : ObservableObject
             context,
             // Compiler first: it is the step that comes before a cook, so it is the order
             // the queue offers on a list nobody has picked yet.
-            new IBuildPage[] { Compiler, Package, Navigation, Lighting });
+            new IBuildPage[] { Compiler, Package, Navigation, Lighting, Hlod });
 
         BrowseProjectCommand = new RelayCommand(BrowseProject);
         ShowPageCommand = new RelayCommand(p => CurrentPageKey = p?.ToString() ?? "Package");
@@ -149,6 +150,7 @@ public sealed class MainViewModel : ObservableObject
     public PackageViewModel Package { get; }
     public NavigationViewModel Navigation { get; }
     public LightingViewModel Lighting { get; }
+    public HlodViewModel Hlod { get; }
     public BuildQueueViewModel Queue { get; }
     public HistoryViewModel HistoryPage { get; }
     public SettingsViewModel Settings { get; }
@@ -225,7 +227,7 @@ public sealed class MainViewModel : ObservableObject
     private IBuildPage? RunningPage =>
         BuildPages.FirstOrDefault(p => p.IsRunning);
 
-    private IBuildPage[] BuildPages => new IBuildPage[] { Compiler, Package, Navigation, Lighting };
+    private IBuildPage[] BuildPages => new IBuildPage[] { Compiler, Package, Navigation, Lighting, Hlod };
 
     /// <summary>What the status bar says on the left.</summary>
     public string StatusSummary
@@ -275,6 +277,7 @@ public sealed class MainViewModel : ObservableObject
                 "Compiler" => Compiler,
                 "Navigation" => Navigation,
                 "Lighting" => Lighting,
+                "Hlod" => Hlod,
                 "Queue" => Queue,
                 "Output" => LogViewModel,
                 "History" => HistoryPage,
@@ -351,6 +354,7 @@ public sealed class MainViewModel : ObservableObject
         await Package.OnProjectChangedAsync();
         await Navigation.OnProjectChangedAsync();
         await Lighting.OnProjectChangedAsync();
+        await Hlod.OnProjectChangedAsync();
 
         Settings.RefreshResolved();
 

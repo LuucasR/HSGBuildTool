@@ -358,6 +358,7 @@ public sealed class QueueStep : ObservableObject
         "package" => "Package",
         "nav" => "Navigation",
         "lighting" => "Lighting",
+        "hlod" => "HLOD",
         _ => Page.Kind
     };
 
@@ -367,6 +368,7 @@ public sealed class QueueStep : ObservableObject
         "package" => "RunUAT BuildCookRun with the active preset",
         "nav" => "World Partition navigation data for the selected maps",
         "lighting" => "Static lighting for the selected maps",
+        "hlod" => "World Partition HLODs for the selected maps",
         _ => ""
     };
 

@@ -20,7 +20,7 @@ public enum BuildOutcome
 /// </remarks>
 public sealed class BuildRecord
 {
-    /// <summary>"compile", "package", "nav" or "lighting" — the same label used for the log file.</summary>
+    /// <summary>"compile", "package", "nav", "lighting" or "hlod" — the same label used for the log file.</summary>
     public string Kind { get; set; } = "";
 
     public string ProjectFile { get; set; } = "";
@@ -59,6 +59,7 @@ public sealed class BuildRecord
         "package" => "Package",
         "nav" => "Navigation",
         "lighting" => "Lighting",
+        "hlod" => "HLOD",
         _ => Kind
     };
 

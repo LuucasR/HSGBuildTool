@@ -17,7 +17,7 @@ namespace FMFCBuildTool.ViewModels;
 /// </remarks>
 public interface IBuildPage
 {
-    /// <summary>"compile", "package", "nav" or "lighting". Identifies the page in history and the queue.</summary>
+    /// <summary>"compile", "package", "nav", "lighting" or "hlod". Identifies the page in history and the queue.</summary>
     string Kind { get; }
 
     /// <summary>Verb on the primary button, e.g. "BUILD NAVIGATION".</summary>
