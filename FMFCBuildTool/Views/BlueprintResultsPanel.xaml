@@ -1,0 +1,156 @@
+<UserControl x:Class="FMFCBuildTool.Views.BlueprintResultsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Style="{StaticResource AppControl}"
+             Visibility="{Binding HasBlueprintResults, Converter={StaticResource BoolToVisibility}}">
+
+    <!--
+        Which Blueprints the compile broke. DataContext is a CompilerViewModel.
+
+        The same argument as MapResultsPanel: "3 Blueprints failed" in the log is not
+        something anyone can act on, and finding the three in a headless editor log is
+        exactly the job this page exists to save. The error text is on the row because a
+        path alone still does not say what broke — and because seeing the text is how you
+        notice a line that was attributed to the wrong asset.
+    -->
+
+    <Border Style="{StaticResource Card}" Padding="14,12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="BLUEPRINTS" Margin="0" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource Caption}"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           Text="{Binding BlueprintSummary}"/>
+
+                <Button Grid.Column="2"
+                        Style="{StaticResource ToolButton}"
+                        Command="{Binding CopyBlueprintListCommand}"
+                        ToolTip="Copy the list as state, path and first error — one line per Blueprint">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource ButtonIconFilled}" Data="{StaticResource IconCopy}"/>
+                        <TextBlock Text="Copy list" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Re-runs the Blueprint steps against the binaries the last compile
+                     produced, so fixing an asset by hand does not cost another full build. -->
+                <Button Grid.Column="3"
+                        Style="{StaticResource ToolButton}"
+                        Command="{Binding RetryBlueprintsCommand}"
+                        ToolTip="Run the Blueprint steps again, without recompiling the C++">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Style="{StaticResource ButtonIconFilled}" Data="{StaticResource IconPlay}"/>
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="Retry Blueprints"/>
+                            <Run Text="{Binding BlueprintFailedCount, Mode=OneWay, StringFormat=({0})}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <ListView Grid.Row="1"
+                      ItemsSource="{Binding BlueprintResults}"
+                      MaxHeight="220"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling">
+
+                <ListView.View>
+                    <GridView>
+
+                        <GridViewColumn Header="Blueprint" Width="220" DisplayMemberBinding="{Binding Name}"/>
+
+                        <GridViewColumn Header="Result" Width="120">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StateLabel}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding State}" Value="Reloaded">
+                                                        <Setter Property="Foreground" Value="{StaticResource Success}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Saved">
+                                                        <Setter Property="Foreground" Value="{StaticResource Success}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Failed">
+                                                        <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="StillFailing">
+                                                        <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+                                                    </DataTrigger>
+                                                    <!-- Not a failure of the Blueprint: the asset compiled and could
+                                                         not be written, which is a different thing to go and fix. -->
+                                                    <DataTrigger Binding="{Binding State}" Value="SaveFailed">
+                                                        <Setter Property="Foreground" Value="{StaticResource Warning}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Unknown">
+                                                        <Setter Property="Foreground" Value="{StaticResource Warning}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Errors" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ErrorCount}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn Header="Package path" Width="360">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Path}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- The first error, in full on hover. Without it the row says
+                             something is broken but not what, which is half an answer. -->
+                        <GridViewColumn Header="First error" Width="420">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding FirstError}"
+                                               Foreground="{StaticResource TextDim}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding FirstError}"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+    </Border>
+</UserControl>

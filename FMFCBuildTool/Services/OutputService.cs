@@ -247,7 +247,15 @@ public sealed class OutputService : IDisposable
         }
     }
 
-    /// <summary>Deletes log files older than <paramref name="retentionDays"/>.</summary>
+    /// <summary>
+    /// Deletes log files older than <paramref name="retentionDays"/>, and the scripts
+    /// generated beside them.
+    /// </summary>
+    /// <remarks>
+    /// The .py comes from the Compiler page's Blueprint refresh, which writes the exact
+    /// script it ran next to the exact log it produced. Pruning only the log would leave
+    /// the scripts to accumulate forever.
+    /// </remarks>
     public void PruneLogs(int retentionDays)
     {
         if (retentionDays <= 0)
@@ -260,10 +268,13 @@ public sealed class OutputService : IDisposable
 
             var cutoff = DateTime.Now.AddDays(-retentionDays);
 
-            foreach (var file in Directory.EnumerateFiles(_logDirectory, "*.log"))
+            foreach (var pattern in new[] { "*.log", "*.py" })
             {
-                if (File.GetLastWriteTime(file) < cutoff)
-                    File.Delete(file);
+                foreach (var file in Directory.EnumerateFiles(_logDirectory, pattern))
+                {
+                    if (File.GetLastWriteTime(file) < cutoff)
+                        File.Delete(file);
+                }
             }
         }
         catch

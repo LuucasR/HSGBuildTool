@@ -1,0 +1,201 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace FMFCBuildTool.Services;
+
+/// <summary>
+/// Generates the Python the editor runs to load, compile and save Blueprints.
+/// </summary>
+/// <remarks>
+/// What this does and does not do is worth being exact about, because the obvious reading
+/// is wrong. The Blueprint editor's "Refresh All Nodes" is
+/// <c>FBlueprintEditorUtils::RefreshAllNodes</c>, which walks every K2Node and calls
+/// <c>Schema-&gt;ReconstructNode</c>. As of 5.7 that is not reachable from script: the only
+/// scriptable function that calls it is <c>ReparentBlueprint</c>, and only when the parent
+/// class actually changes. <c>unreal.BlueprintEditorLibrary.compile_blueprint()</c> — the
+/// obvious candidate — only calls <c>FKismetEditorUtilities::CompileBlueprint</c> with
+/// <c>SkipSave</c>.
+///
+/// So this loads the asset, compiles it and saves it. The load is the part that does the
+/// repair: the on-load path conforms a Blueprint against its current dependencies, which
+/// is what catches a good share of the references left stale by a changed USTRUCT. It is
+/// not a node reconstruction, and the page's wording says so rather than implying a fix
+/// it cannot make.
+///
+/// Python rather than a commandlet because nothing stock reloads and resaves only a named
+/// set of Blueprints. The script is generated rather than shipped for two reasons: the
+/// failure list it works from only exists once the previous step has run, and a generated
+/// file written next to the run's log means a post-mortem has the exact script and the
+/// exact log side by side.
+///
+/// It reports through <see cref="BlueprintBuilder.BeginMarker"/> / <see cref="BlueprintBuilder.EndMarker"/>
+/// markers, and deliberately reports only what it can know. <c>compile_blueprint()</c>
+/// returns None, so whether a Blueprint still fails is decided on the C# side by the
+/// errors logged between the two markers — an inference the script cannot make and
+/// therefore does not claim.
+/// </remarks>
+public static class BlueprintScriptWriter
+{
+    /// <summary>The Blueprints named, in order. Used for the repair step of a live run.</summary>
+    public static string ForPaths(IReadOnlyList<string> packagePaths, bool save)
+    {
+        var script = new StringBuilder();
+
+        WriteHeader(script, $"{packagePaths.Count} Blueprint(s)", save);
+
+        script.AppendLine("PATHS = [");
+
+        foreach (var path in packagePaths)
+            script.AppendLine($"    \"{Escape(path)}\",");
+
+        script.AppendLine("]");
+        script.AppendLine();
+
+        WriteBody(script, save);
+
+        return script.ToString();
+    }
+
+    /// <summary>
+    /// Every Blueprint under /Game, discovered at run time.
+    /// </summary>
+    /// <remarks>
+    /// For the .bat export only. A batch file cannot read the previous step's failure
+    /// list, so the exported run reloads and saves everything rather than pretending
+    /// to know which ones broke — a wider job than the UI does, and the .bat says so.
+    /// </remarks>
+    public static string ForAllBlueprints(bool save)
+    {
+        var script = new StringBuilder();
+
+        WriteHeader(script, "every Blueprint under /Game", save);
+
+        script.AppendLine("def _all_blueprint_paths():");
+        script.AppendLine("    registry = unreal.AssetRegistryHelpers.get_asset_registry()");
+        script.AppendLine("    registry.wait_for_completion()");
+        script.AppendLine();
+        script.AppendLine("    try:");
+        script.AppendLine("        # 5.1 and later want a TopLevelAssetPath here.");
+        script.AppendLine("        assets = registry.get_assets_by_class(unreal.TopLevelAssetPath(\"/Script/Engine\", \"Blueprint\"), True)");
+        script.AppendLine("    except Exception:");
+        script.AppendLine("        assets = registry.get_assets_by_class(\"Blueprint\", True)");
+        script.AppendLine();
+        script.AppendLine("    found = []");
+        script.AppendLine();
+        script.AppendLine("    for asset in assets:");
+        script.AppendLine("        name = str(asset.package_name)");
+        script.AppendLine();
+        script.AppendLine($"        # Project content only: engine and plugin Blueprints are not ours to save.");
+        script.AppendLine($"        if name.startswith(\"{BlueprintBuilder.ProjectContentRoot}\"):");
+        script.AppendLine("            found.append(name)");
+        script.AppendLine();
+        script.AppendLine("    found.sort()");
+        script.AppendLine();
+        script.AppendLine("    return found");
+        script.AppendLine();
+        script.AppendLine();
+        script.AppendLine("PATHS = _all_blueprint_paths()");
+        script.AppendLine();
+
+        WriteBody(script, save);
+
+        return script.ToString();
+    }
+
+    private static void WriteHeader(StringBuilder script, string scope, bool save)
+    {
+        script.AppendLine($"# Generated by FMFC Build Tool on {DateTime.Now:yyyy-MM-dd HH:mm} — {scope}");
+        script.AppendLine("#");
+        script.AppendLine("# Loads each Blueprint in a fresh editor, compiles it and saves it. The load is the");
+        script.AppendLine("# part that repairs: the on-load path conforms the Blueprint against its current");
+        script.AppendLine("# dependencies, which catches many of the references a changed struct left stale.");
+        script.AppendLine("#");
+        script.AppendLine("# This is NOT the editor's \"Refresh All Nodes\". That is");
+        script.AppendLine("# FBlueprintEditorUtils::RefreshAllNodes, which is not exposed to script in 5.7 —");
+        script.AppendLine("# compile_blueprint() only compiles, with SkipSave.");
+
+        if (save)
+            script.AppendLine("# The asset is then saved, so the fix survives this process.");
+        else
+            script.AppendLine("# Nothing is saved: this run only reports what compiling would say.");
+
+        script.AppendLine();
+        script.AppendLine("import unreal");
+        script.AppendLine();
+        script.AppendLine($"BEGIN = \"{BlueprintBuilder.BeginMarker}\"");
+        script.AppendLine($"END = \"{BlueprintBuilder.EndMarker}\"");
+        script.AppendLine($"SUMMARY = \"{BlueprintBuilder.SummaryMarker}\"");
+        script.AppendLine();
+    }
+
+    private static void WriteBody(StringBuilder script, bool save)
+    {
+        if (save)
+        {
+            script.AppendLine("def _save(asset):");
+            script.AppendLine("    library = getattr(unreal, \"EditorAssetLibrary\", None)");
+            script.AppendLine();
+            script.AppendLine("    if library is not None and hasattr(library, \"save_loaded_asset\"):");
+            script.AppendLine("        return library.save_loaded_asset(asset, False)");
+            script.AppendLine();
+            script.AppendLine("    # EditorAssetLibrary is deprecated in newer versions in favour of the subsystem.");
+            script.AppendLine("    return unreal.get_editor_subsystem(unreal.EditorAssetSubsystem).save_loaded_asset(asset, False)");
+            script.AppendLine();
+            script.AppendLine();
+        }
+
+        script.AppendLine("attempted = 0");
+        script.AppendLine("saved = 0");
+        script.AppendLine();
+        script.AppendLine("for path in PATHS:");
+        script.AppendLine("    attempted += 1");
+        script.AppendLine();
+        script.AppendLine("    # The markers bracket the compile, so the errors it logs in between can be");
+        script.AppendLine("    # attributed to this Blueprint and to no other.");
+        script.AppendLine("    unreal.log(\"%s %s\" % (BEGIN, path))");
+        script.AppendLine();
+        script.AppendLine($"    result = \"{BlueprintBuilder.ResultOk}\"");
+        script.AppendLine();
+        script.AppendLine("    try:");
+        script.AppendLine("        asset = unreal.load_asset(path)");
+        script.AppendLine();
+        script.AppendLine("        if asset is None:");
+        script.AppendLine($"            result = \"{BlueprintBuilder.ResultLoadFailed}\"");
+        script.AppendLine("        else:");
+        script.AppendLine("            unreal.BlueprintEditorLibrary.compile_blueprint(asset)");
+        script.AppendLine();
+
+        if (save)
+        {
+            script.AppendLine("            if _save(asset):");
+            script.AppendLine("                saved += 1");
+            script.AppendLine("            else:");
+            script.AppendLine($"                result = \"{BlueprintBuilder.ResultSaveFailed}\"");
+        }
+        else
+        {
+            script.AppendLine("            pass");
+        }
+
+        script.AppendLine();
+
+        // One bad asset must not cost the rest of the list — the whole point of running
+        // these in a batch is that you get every answer, not the first one.
+        script.AppendLine("    except Exception as error:");
+        script.AppendLine($"        result = \"{BlueprintBuilder.ResultException}\"");
+        script.AppendLine("        unreal.log_error(\"%s: %s\" % (path, error))");
+        script.AppendLine();
+        script.AppendLine("    unreal.log(\"%s %s %s\" % (END, path, result))");
+        script.AppendLine();
+        script.AppendLine("# Its absence is how the tool knows the run died halfway rather than found nothing.");
+        script.AppendLine("unreal.log(\"%s attempted=%d saved=%d\" % (SUMMARY, attempted, saved))");
+    }
+
+    /// <summary>
+    /// Escapes a package path for a double-quoted Python literal. Package paths do not
+    /// normally contain either character, which is exactly why an unescaped one would
+    /// break the script for a single unlucky asset and nobody would see it coming.
+    /// </summary>
+    private static string Escape(string path) => path.Replace("\\", "\\\\").Replace("\"", "\\\"");
+}

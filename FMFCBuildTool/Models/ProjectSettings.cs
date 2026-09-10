@@ -47,6 +47,42 @@ public class ProjectSettings
     /// <summary>"Debug", "Development" or "Shipping" as the page shows them.</summary>
     public string CompileConfiguration { get; set; } = "Development";
 
+    /// <summary>
+    /// Run CompileAllBlueprints after the C++ build, to find the Blueprints a changed
+    /// USTRUCT or UCLASS has just broken.
+    /// </summary>
+    /// <remarks>
+    /// Off by default, and the three fields below with it: this turns a two-minute
+    /// incremental compile into a full editor load, which nobody should get by upgrading.
+    /// A config written before this existed deserialises straight to these defaults.
+    /// </remarks>
+    public bool UpdateBlueprints { get; set; }
+
+    /// <summary>
+    /// For each Blueprint that failed above, refresh its nodes, compile again and save.
+    /// No effect without <see cref="UpdateBlueprints"/> — it has nothing to work from.
+    /// </summary>
+    public bool UpdateAllNodesInBlueprints { get; set; }
+
+    /// <summary>
+    /// Pass -IgnoreFolder=/Engine so the commandlet skips content this project cannot fix.
+    /// On by default: compiling several hundred engine Blueprints on every run to report
+    /// failures nobody here can act on is waste.
+    /// </summary>
+    /// <remarks>
+    /// True rather than false is the one Blueprint default that is not "off", and only
+    /// because it cannot surprise anyone: a config written before this existed deserialises
+    /// to false, which is the wider, slower behaviour, not a narrower one that hides
+    /// failures.
+    /// </remarks>
+    public bool BlueprintSkipEngineContent { get; set; } = true;
+
+    /// <summary>
+    /// Appended verbatim to both Blueprint invocations, for the commandlet's other
+    /// switches — -DirtyOnly, -BlueprintBaseClass=, -AllowListFile= and the rest.
+    /// </summary>
+    public string BlueprintExtraArguments { get; set; } = "";
+
     public BuildPreset GetActivePreset()
     {
         if (Presets.Count == 0)

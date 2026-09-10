@@ -13,17 +13,27 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <!--
+            The same name the Package and HLOD pages use for their option checkboxes, but
+            stacked rather than in a row: each of these needs a paragraph under it saying
+            what it costs, so they cannot sit side by side.
+        -->
+        <Style x:Key="OptionCheck" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <views:PageHeader Title="Compiler"
-                          Subtitle="Runs UnrealBuildTool on the project's C++ code. Compile before queueing a package build, so a class that never got built fails here in seconds instead of halfway through a cook."/>
+                          Subtitle="Runs UnrealBuildTool on the project's C++ code, and can follow it by compiling every Blueprint. Compile before queueing a package build, so a class that never got built fails here in seconds instead of halfway through a cook."/>
 
         <Border Grid.Row="1" Style="{StaticResource Card}" Margin="20,0,20,12" VerticalAlignment="Top">
             <StackPanel>
@@ -93,11 +103,71 @@
                 <TextBlock Style="{StaticResource Caption}"
                            Foreground="{StaticResource TextDim}"
                            TextWrapping="Wrap"
+                           Margin="0,0,0,4"
                            Text="Debug builds as DebugGame: real Debug needs an engine compiled in Debug, which a Launcher install is not."/>
+
+                <Separator/>
+
+                <!-- ============================================ BLUEPRINTS -->
+
+                <TextBlock Style="{StaticResource SectionLabel}" Text="AFTER COMPILING"/>
+
+                <CheckBox Style="{StaticResource OptionCheck}"
+                          Margin="0,8,0,0"
+                          Content="Update Blueprints?"
+                          IsChecked="{Binding UpdateBlueprints}"
+                          ToolTip="-run=CompileAllBlueprints. Adds an editor start-up to every compile, and a failing Blueprint now fails the build — which stops a queued Compile → Package."/>
+
+                <TextBlock Style="{StaticResource Caption}"
+                           Foreground="{StaticResource TextDim}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,10"
+                           Text="Runs the editor's CompileAllBlueprints commandlet once the C++ build succeeds, and lists the Blueprints that failed. It compiles in memory: nothing is saved, so this reports the damage rather than repairing it. Not the same as opening the editor, which only recompiles what is out of date — this compiles every Blueprint, every time."/>
+
+                <!-- Useless on its own: it works from the failures of the step above. -->
+                <CheckBox Style="{StaticResource OptionCheck}"
+                          Content="Update all nodes in Blueprint?"
+                          IsEnabled="{Binding UpdateBlueprints}"
+                          IsChecked="{Binding UpdateAllNodesInBlueprints}"
+                          ToolTip="Runs a generated Python script through -run=pythonscript. This one writes to your project."/>
+
+                <!--
+                    This caption has to be blunt about the gap. "Refresh All Nodes" in the
+                    Blueprint editor is FBlueprintEditorUtils::RefreshAllNodes, which 5.7
+                    does not expose to script at all — compile_blueprint() only compiles,
+                    with SkipSave. Loading the asset is what repairs, and it repairs less.
+                -->
+                <TextBlock Style="{StaticResource Caption}"
+                           Foreground="{StaticResource TextDim}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,10"
+                           Text="For each Blueprint that failed above, loads it in a fresh editor, compiles it again and SAVES the asset. The load is what repairs a reference left stale by a changed struct. This is not the editor's Refresh All Nodes, which Unreal does not expose to scripting — a Blueprint that needs a real node reconstruction will still come back as failing and has to be opened by hand. Needs the Python Editor Script plugin enabled, and the editor closed, or the saves fail."/>
+
+                <CheckBox Style="{StaticResource OptionCheck}"
+                          Content="Skip engine content"
+                          IsEnabled="{Binding UpdateBlueprints}"
+                          IsChecked="{Binding BlueprintSkipEngineContent}"
+                          ToolTip="-IgnoreFolder=/Engine,/Script — skips content this project could not fix even if it is broken"/>
+
+                <TextBlock Style="{StaticResource Caption}"
+                           Foreground="{StaticResource TextDim}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,10"
+                           Text="Untick to compile engine Blueprints too. Slower, and what it finds is not yours to fix. Note that plugin content is compiled either way — -IgnoreFolder is a blocklist, so it cannot express &quot;only /Game&quot; — but plugin failures are counted rather than listed."/>
+
+                <TextBlock Style="{StaticResource FieldLabel}" Text="Extra arguments" Margin="0,4,0,0"/>
+
+                <TextBox Margin="0,4,0,0"
+                         FontFamily="{StaticResource MonoFont}"
+                         FontSize="{StaticResource FontSizeMono}"
+                         Text="{Binding BlueprintExtraArguments, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Appended verbatim to both Blueprint invocations. The commandlet's own filtering switches are undocumented and Unreal ignores unknown ones silently, so the tool sends none — this is where to try yours."/>
 
             </StackPanel>
         </Border>
 
-        <views:BuildActionBar Grid.Row="2"/>
+        <views:BlueprintResultsPanel Grid.Row="2" Margin="20,0,20,12" VerticalAlignment="Top"/>
+
+        <views:BuildActionBar Grid.Row="3"/>
     </Grid>
 </UserControl>

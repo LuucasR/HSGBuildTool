@@ -7,6 +7,47 @@ namespace FMFCBuildTool.Tests;
 
 public class BatchScriptWriterTests
 {
+    /// <summary>
+    /// Steps are not maps. Updating Blueprints against binaries that failed to build
+    /// reports failures that say nothing about the Blueprints, so unlike the per-map
+    /// script this one stops at the first failure.
+    /// </summary>
+    [Fact]
+    public void A_step_script_stops_at_the_first_failure()
+    {
+        var script = BatchScriptWriter.ForSteps(
+            "Compile FMFC",
+            @"C:\Games\FMFC",
+            new[]
+            {
+                (@"C:\UE\Build.bat", "FMFCEditor Win64 Development", "Compile FMFCEditor Development"),
+                (@"C:\UE\UnrealEditor-Cmd.exe", "-run=CompileAllBlueprints", "Update Blueprints")
+            });
+
+        Assert.Contains(@"cd /d ""C:\Games\FMFC""", script);
+        Assert.Contains(@"call ""C:\UE\Build.bat"" FMFCEditor Win64 Development", script);
+        Assert.Contains(@"call ""C:\UE\UnrealEditor-Cmd.exe"" -run=CompileAllBlueprints", script);
+
+        Assert.Equal(2, Occurrences(script, "exit /b %ERRORLEVEL%"));
+        Assert.Contains("exit /b 0", script);
+    }
+
+    /// <summary>
+    /// The exported refresh step does more than the tool's own run does, and the .bat has
+    /// to say so rather than quietly look equivalent.
+    /// </summary>
+    [Fact]
+    public void Notes_are_written_into_the_preamble()
+    {
+        var script = BatchScriptWriter.ForSteps(
+            "Compile FMFC",
+            @"C:\Games\FMFC",
+            new[] { (@"C:\UE\Build.bat", "FMFCEditor Win64 Development", "Compile") },
+            new[] { "This refreshes every Blueprint, not only the failures." });
+
+        Assert.Contains("REM This refreshes every Blueprint, not only the failures.", script);
+    }
+
     [Fact]
     public void A_single_command_script_changes_directory_and_forwards_the_exit_code()
     {

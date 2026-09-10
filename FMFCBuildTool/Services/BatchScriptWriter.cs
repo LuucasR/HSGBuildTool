@@ -31,6 +31,55 @@ public static class BatchScriptWriter
         return script.ToString();
     }
 
+    /// <summary>
+    /// A sequence of steps that stops at the first failure, as the Compiler page's
+    /// compile → update Blueprints → refresh nodes run does.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately the opposite of <see cref="ForEachMap(string, string, string, IReadOnlyList{string}, Func{string, IReadOnlyList{CommandletPass}})"/>,
+    /// which must not abort: maps are independent, so one bad map should not cost the
+    /// other nine. Steps are not independent — updating Blueprints against binaries that
+    /// failed to build reports failures that say nothing about the Blueprints — so here
+    /// the first failure ends the run.
+    /// </remarks>
+    /// <param name="notes">Lines written into the preamble as REM, for what the .bat cannot do.</param>
+    public static string ForSteps(
+        string header,
+        string workingDirectory,
+        IReadOnlyList<(string Exe, string Arguments, string Label)> steps,
+        IReadOnlyList<string>? notes = null)
+    {
+        var script = new StringBuilder();
+
+        WritePreamble(script, header, workingDirectory);
+
+        if (notes is { Count: > 0 })
+        {
+            foreach (var note in notes)
+                script.AppendLine($"REM {note}");
+
+            script.AppendLine();
+        }
+
+        for (var i = 0; i < steps.Count; i++)
+        {
+            var (exe, arguments, label) = steps[i];
+
+            script.AppendLine($"echo [{i + 1}/{steps.Count}] {label}");
+            script.AppendLine($"call \"{exe}\" {arguments}");
+            script.AppendLine("if errorlevel 1 (");
+            script.AppendLine($"    echo FAILED: {label}");
+            script.AppendLine("    exit /b %ERRORLEVEL%");
+            script.AppendLine(")");
+            script.AppendLine();
+        }
+
+        script.AppendLine("echo All steps succeeded.");
+        script.AppendLine("exit /b 0");
+
+        return script.ToString();
+    }
+
     /// <summary>One invocation per map, mirroring the commandlet pages' run loop.</summary>
     public static string ForEachMap(
         string header,

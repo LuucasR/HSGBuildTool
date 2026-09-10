@@ -80,4 +80,28 @@ public class LogParserTests
     {
         Assert.Equal(LogSeverity.Info, LogParser.Parse("Building 3 of 8").Severity);
     }
+
+    /// <summary>
+    /// The Compiler page reads the Blueprint step out of these two lines, so what they
+    /// classify as is not cosmetic: an "attempting" line counted as an error would fail
+    /// every run, and an error line counted as info would fail none.
+    /// </summary>
+    [Fact]
+    public void The_blueprint_commandlets_per_asset_line_is_info()
+    {
+        var entry = LogParser.Parse(
+            "LogCompileAllBlueprintsCommandlet: Display: Loading and Compiling: '/Game/BP/BP_Door.BP_Door'...");
+
+        Assert.Equal(LogSeverity.Info, entry.Severity);
+        Assert.Equal("LogCompileAllBlueprintsCommandlet", entry.Category);
+    }
+
+    [Fact]
+    public void Python_errors_are_errors()
+    {
+        var entry = LogParser.Parse("LogPython: Error: /Game/BP/BP_Door: something went wrong");
+
+        Assert.Equal(LogSeverity.Error, entry.Severity);
+        Assert.Equal("LogPython", entry.Category);
+    }
 }
