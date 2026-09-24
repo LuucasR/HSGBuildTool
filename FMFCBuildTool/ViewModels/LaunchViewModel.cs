@@ -130,6 +130,8 @@ public sealed class LaunchViewModel : ObservableObject
 
     public IReadOnlyList<string> Rhis => LaunchBuilder.Rhis;
 
+    public IReadOnlyList<string> ScalabilityLevels => LaunchBuilder.ScalabilityLevels;
+
     public ObservableCollection<GameInstance> Instances => _launcher.Instances;
 
     public bool HasInstances => Instances.Count > 0;
@@ -244,6 +246,12 @@ public sealed class LaunchViewModel : ObservableObject
         set => Set(value ?? "Default", _settings.LaunchRhi, v => _settings.LaunchRhi = v);
     }
 
+    public string Scalability
+    {
+        get => LaunchBuilder.ScalabilityLevels.Contains(_settings.LaunchScalability) ? _settings.LaunchScalability : "Default";
+        set => Set(value ?? "Default", _settings.LaunchScalability, v => _settings.LaunchScalability = v);
+    }
+
     public bool NoSound
     {
         get => _settings.LaunchNoSound;
@@ -339,7 +347,7 @@ public sealed class LaunchViewModel : ObservableObject
                      nameof(Mode), nameof(ModeDescription), nameof(ShowsClients), nameof(ShowsPort),
                      nameof(ShowsConnectAddress), nameof(ClientCount), nameof(Port), nameof(ConnectAddress),
                      nameof(Windowed), nameof(ResX), nameof(ResY), nameof(TileWindows), nameof(GameMode),
-                     nameof(UrlOptions), nameof(Rhi), nameof(NoSound), nameof(ShowLogConsole),
+                     nameof(UrlOptions), nameof(Rhi), nameof(Scalability), nameof(NoSound), nameof(ShowLogConsole),
                      nameof(ExecCmds), nameof(NoSteam), nameof(ExtraArguments)
                  })
         {
@@ -415,7 +423,8 @@ public sealed class LaunchViewModel : ObservableObject
         ShowLogConsole,
         ExecCmds,
         NoSteam,
-        ExtraArguments);
+        ExtraArguments,
+        Scalability);
 
     private static ScreenArea Screen()
     {

@@ -115,6 +115,9 @@ public class ProjectSettings
 
     public string LaunchRhi { get; set; } = "Default";
 
+    /// <summary>"Default", or a scalability level every game window starts at.</summary>
+    public string LaunchScalability { get; set; } = "Default";
+
     public bool LaunchNoSound { get; set; }
 
     public bool LaunchShowLogConsole { get; set; }

@@ -46,7 +46,8 @@ public sealed record LaunchOptions(
     bool ShowLogConsole,
     string ExecCmds,
     bool NoSteam,
-    string ExtraArguments);
+    string ExtraArguments,
+    string Scalability = "Default");
 
 /// <summary>One process the launch starts.</summary>
 /// <param name="Label">"Game", "Server", "Host" or "Client 2" — prefixes its lines in Output.</param>
@@ -86,6 +87,21 @@ public static class LaunchBuilder
     };
 
     public static IReadOnlyList<string> Rhis { get; } = new[] { "Default", "DX12", "DX11", "Vulkan" };
+
+    /// <summary>"Default" leaves the project's and the player's saved settings alone.</summary>
+    public static IReadOnlyList<string> ScalabilityLevels { get; } = new[] { "Default", "Low", "Medium", "High", "Epic", "Cinematic" };
+
+    /// <summary>
+    /// The scalability groups a level applies to. Not sg.ResolutionQuality: that one is a
+    /// screen percentage rather than a level, and the Scalability console command's 50% at
+    /// Low would make a quick look at a map blurry for no gain in load time.
+    /// </summary>
+    private static readonly string[] ScalabilityGroups =
+    {
+        "sg.ViewDistanceQuality", "sg.AntiAliasingQuality", "sg.ShadowQuality", "sg.GlobalIlluminationQuality",
+        "sg.ReflectionQuality", "sg.PostProcessQuality", "sg.TextureQuality", "sg.EffectsQuality",
+        "sg.FoliageQuality", "sg.ShadingQuality", "sg.LandscapeQuality"
+    };
 
     public static bool HasServer(LaunchMode mode)
         => mode is LaunchMode.ListenServer or LaunchMode.DedicatedServer or LaunchMode.DedicatedServerOnly;
@@ -252,6 +268,9 @@ public static class LaunchBuilder
         if (options.NoSound)
             args.Add("-nosound");
 
+        if (ScalabilityArgument(options.Scalability) is { } scalability)
+            args.Add(scalability);
+
         AddCommon(args, options, label, logFolder);
 
         return new LaunchInstance(label, isServer, args, LogFile(logFolder, label));
@@ -274,6 +293,28 @@ public static class LaunchBuilder
         AddCommon(args, options, label, logFolder);
 
         return new LaunchInstance(label, true, args, LogFile(logFolder, label));
+    }
+
+    /// <summary>
+    /// -ForceDPCVars=sg.ShadowQuality=0,... for a level, or null for Default.
+    /// </summary>
+    /// <remarks>
+    /// ForceDPCVars rather than -ExecCmds="scalability 0": the device-profile cvars are set
+    /// while the engine starts, before the first map loads, which is the point on a heavy
+    /// map — ExecCmds only run on the first tick, after the load they were meant to speed up.
+    /// The Force variant sets them at command-line priority, above what
+    /// GameUserSettings.ini applies from the player's saved settings, so a project that
+    /// calls ApplySettings on startup does not quietly put them back.
+    /// </remarks>
+    public static string? ScalabilityArgument(string level)
+    {
+        var index = Array.IndexOf(ScalabilityLevels.ToArray(), level);
+
+        // Index 0 is Default; Low is quality level 0.
+        if (index <= 0)
+            return null;
+
+        return "-ForceDPCVars=" + string.Join(",", ScalabilityGroups.Select(g => $"{g}={index - 1}"));
     }
 
     /// <summary>What every process gets, window or not.</summary>

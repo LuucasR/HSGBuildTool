@@ -188,6 +188,50 @@ public class LaunchBuilderTests
     }
 
     [Fact]
+    public void Low_scalability_sets_every_group_to_zero_before_the_map_loads()
+    {
+        var game = LaunchBuilder.Build(ProjectFile, Options() with { Scalability = "Low" }, Screen).Single();
+
+        var argument = Assert.Single(game.Arguments, a => a.StartsWith("-ForceDPCVars="));
+
+        Assert.Contains("sg.ShadowQuality=0", argument);
+        Assert.Contains("sg.TextureQuality=0", argument);
+        Assert.Contains("sg.ViewDistanceQuality=0", argument);
+        Assert.DoesNotContain("sg.ResolutionQuality", argument);
+        Assert.DoesNotContain(" ", argument);
+    }
+
+    [Theory]
+    [InlineData("Medium", 1)]
+    [InlineData("High", 2)]
+    [InlineData("Epic", 3)]
+    [InlineData("Cinematic", 4)]
+    public void Each_level_maps_to_its_quality_number(string level, int quality)
+    {
+        var argument = LaunchBuilder.ScalabilityArgument(level);
+
+        Assert.NotNull(argument);
+        Assert.Contains($"sg.EffectsQuality={quality}", argument);
+    }
+
+    [Fact]
+    public void Default_scalability_leaves_the_saved_settings_alone()
+    {
+        var game = LaunchBuilder.Build(ProjectFile, Options(), Screen).Single();
+
+        Assert.DoesNotContain(game.Arguments, a => a.StartsWith("-ForceDPCVars="));
+    }
+
+    [Fact]
+    public void The_dedicated_server_gets_no_scalability_but_its_clients_do()
+    {
+        var instances = LaunchBuilder.Build(ProjectFile, Options(LaunchMode.DedicatedServer) with { Scalability = "Low" }, Screen);
+
+        Assert.DoesNotContain(instances[0].Arguments, a => a.StartsWith("-ForceDPCVars="));
+        Assert.All(instances.Skip(1), c => Assert.Contains(c.Arguments, a => a.StartsWith("-ForceDPCVars=")));
+    }
+
+    [Fact]
     public void A_listen_server_without_a_map_is_refused()
     {
         var problems = LaunchBuilder.Validate(ProjectFile, null, Options(LaunchMode.ListenServer, map: ""));
