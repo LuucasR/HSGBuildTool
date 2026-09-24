@@ -35,19 +35,50 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionLabel}" Text="MAP AND MODE"/>
 
+                        <!-- A searchable list, not a dropdown: projects here have hundreds of
+                             maps, and scrolling a ComboBox for one of them is the slow part. -->
                         <StackPanel Style="{StaticResource Row}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="Map" Width="90"/>
-                            <ComboBox Width="420"
-                                      Margin="0,0,10,0"
-                                      ItemsSource="{Binding Maps}"
-                                      SelectedItem="{Binding Map}"
-                                      ToolTip="Every .umap under Content. The project default is GameDefaultMap, or ServerDefaultMap for a dedicated server."/>
+                            <TextBox x:Name="MapSearchBox"
+                                     Width="420"
+                                     Margin="0,0,10,0"
+                                     Text="{Binding MapSearch, UpdateSourceTrigger=PropertyChanged, Delay=150}"
+                                     PreviewKeyDown="OnMapSearchKeyDown"
+                                     ToolTip="Filter by /Game path. Several words match in any order, e.g. &quot;arena night&quot;. Down arrow moves into the list."/>
                             <Button Style="{StaticResource GhostButton}"
                                     Content="Rescan"
                                     Width="90"
+                                    Margin="0,0,12,0"
                                     Command="{Binding RescanMapsCommand}"
                                     ToolTip="Look for maps in Content again"/>
+                            <TextBlock Style="{StaticResource Caption}"
+                                       Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding MapSummary}"/>
                         </StackPanel>
+
+                        <ListBox x:Name="MapList"
+                                 Width="420"
+                                 Height="180"
+                                 Margin="90,6,0,0"
+                                 HorizontalAlignment="Left"
+                                 ItemsSource="{Binding FilteredMaps}"
+                                 SelectedItem="{Binding Map}"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 SelectionChanged="OnMapSelectionChanged"
+                                 ToolTip="Every .umap under Content. The project default is GameDefaultMap, or ServerDefaultMap for a dedicated server.">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="{StaticResource FontSizeMono}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
                         <StackPanel Style="{StaticResource Row}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="Mode" Width="90"/>

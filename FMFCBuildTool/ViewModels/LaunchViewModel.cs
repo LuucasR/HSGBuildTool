@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using FMFCBuildTool.Core;
 using FMFCBuildTool.Models;
@@ -39,6 +41,7 @@ public sealed class LaunchViewModel : ObservableObject
     private string _commandPreview = "";
     private string _validationMessage = "";
     private bool _isScanning;
+    private string _mapSearch = "";
 
     public LaunchViewModel(BuildContext context, GameLauncher launcher, OutputService output, AppConfig config)
     {
@@ -46,6 +49,8 @@ public sealed class LaunchViewModel : ObservableObject
         _launcher = launcher;
         _output = output;
         _config = config;
+
+        FilteredMaps = new ListCollectionView(Maps) { Filter = item => IsMapVisible((string)item) };
 
         LaunchCommand = new AsyncRelayCommand(LaunchAsync, () => CanLaunch);
         StopAllCommand = new RelayCommand(_launcher.StopAll, () => IsRunning);
@@ -67,8 +72,59 @@ public sealed class LaunchViewModel : ObservableObject
 
     // ---------------------------------------------------------------- lists
 
-    /// <summary>/Game paths, with <see cref="DefaultMapEntry"/> first. Strings for the themed ComboBox.</summary>
+    /// <summary>/Game paths, with <see cref="DefaultMapEntry"/> first.</summary>
     public ObservableCollection<string> Maps { get; } = new() { DefaultMapEntry };
+
+    /// <summary>
+    /// <see cref="Maps"/> filtered by <see cref="MapSearch"/>, which the page lists. Its own
+    /// view rather than the default one, so nothing else bound to <see cref="Maps"/> filters too.
+    /// </summary>
+    public ICollectionView FilteredMaps { get; }
+
+    /// <summary>
+    /// Every word must appear somewhere in the /Game path, in any order: "arena night"
+    /// finds /Game/Maps/Arena/L_Arena_Night. With hundreds of maps a single substring is
+    /// rarely enough to get down to one.
+    /// </summary>
+    public string MapSearch
+    {
+        get => _mapSearch;
+        set
+        {
+            if (!SetProperty(ref _mapSearch, value ?? ""))
+                return;
+
+            FilteredMaps.Refresh();
+
+            OnPropertyChanged(nameof(MapSummary));
+        }
+    }
+
+    /// <summary>
+    /// The first map the search matches, for Enter in the search box. Not simply the first
+    /// row: the default entry and the current selection are listed whether they match or not.
+    /// </summary>
+    public string? FirstSearchMatch
+        => string.IsNullOrWhiteSpace(_mapSearch)
+            ? null
+            : Maps.FirstOrDefault(m => m != DefaultMapEntry && MatchesSearch(m));
+
+    /// <summary>"12 of 340 maps" while searching, "340 maps" otherwise.</summary>
+    public string MapSummary
+    {
+        get
+        {
+            // The default-map entry is not a map, and always shown; it is not counted.
+            var total = Maps.Count - 1;
+
+            if (string.IsNullOrWhiteSpace(_mapSearch))
+                return total == 1 ? "1 map" : $"{total} maps";
+
+            var shown = FilteredMaps.Cast<string>().Count(m => m != DefaultMapEntry && MatchesSearch(m));
+
+            return $"{shown} of {total} maps";
+        }
+    }
 
     public IReadOnlyList<LaunchModeOption> Modes => LaunchBuilder.Modes;
 
@@ -295,6 +351,18 @@ public sealed class LaunchViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>
+    /// The default entry and the current selection always stay in the list, so a search
+    /// never leaves the page showing no selection for a map that is still the one to launch.
+    /// </summary>
+    private bool IsMapVisible(string map)
+        => map == DefaultMapEntry || map == Map || MatchesSearch(map);
+
+    private bool MatchesSearch(string map)
+        => _mapSearch
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .All(word => map.Contains(word, StringComparison.OrdinalIgnoreCase));
+
     private async Task ScanMapsAsync()
     {
         IsScanning = true;
@@ -320,6 +388,7 @@ public sealed class LaunchViewModel : ObservableObject
             }
 
             OnPropertyChanged(nameof(Map));
+            OnPropertyChanged(nameof(MapSummary));
         }
         finally
         {
