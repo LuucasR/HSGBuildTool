@@ -24,6 +24,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly ConfigService _configService;
     private readonly ProcessRunner _runner;
     private readonly NotificationService _notifications;
+    private readonly GameLauncher _launcher;
     private readonly ElapsedTimer _sessionElapsed = new();
 
     private bool _isSessionRunning;
@@ -51,6 +52,9 @@ public sealed class MainViewModel : ObservableObject
 
         _notifications = new NotificationService(config);
 
+        // Its own process list, not the runner: a game left open must not block builds.
+        _launcher = new GameLauncher(output);
+
         LogViewModel = new OutputViewModel(output, config);
 
         Compiler = new CompilerViewModel(context, runner, output, config, History);
@@ -58,6 +62,7 @@ public sealed class MainViewModel : ObservableObject
         Navigation = new NavigationViewModel(context, runner, output, config, History);
         Lighting = new LightingViewModel(context, runner, output, config, History);
         Hlod = new HlodViewModel(context, runner, output, config, History);
+        Launch = new LaunchViewModel(context, _launcher, output, config);
         Settings = new SettingsViewModel(config, configService, context, output, ResolveEngine);
 
         HistoryPage = new HistoryViewModel(History, context, output);
@@ -151,6 +156,7 @@ public sealed class MainViewModel : ObservableObject
     public NavigationViewModel Navigation { get; }
     public LightingViewModel Lighting { get; }
     public HlodViewModel Hlod { get; }
+    public LaunchViewModel Launch { get; }
     public BuildQueueViewModel Queue { get; }
     public HistoryViewModel HistoryPage { get; }
     public SettingsViewModel Settings { get; }
@@ -278,6 +284,7 @@ public sealed class MainViewModel : ObservableObject
                 "Navigation" => Navigation,
                 "Lighting" => Lighting,
                 "Hlod" => Hlod,
+                "Launch" => Launch,
                 "Queue" => Queue,
                 "Output" => LogViewModel,
                 "History" => HistoryPage,
@@ -355,6 +362,7 @@ public sealed class MainViewModel : ObservableObject
         await Navigation.OnProjectChangedAsync();
         await Lighting.OnProjectChangedAsync();
         await Hlod.OnProjectChangedAsync();
+        await Launch.OnProjectChangedAsync();
 
         Settings.RefreshResolved();
 
@@ -445,6 +453,10 @@ public sealed class MainViewModel : ObservableObject
     public void Shutdown()
     {
         _runner.Cancel();
+
+        // Their logs are followed by this process; left running, they would play on with
+        // nothing reading them and nothing on the Launch page to stop them from.
+        _launcher.Dispose();
 
         Save();
 

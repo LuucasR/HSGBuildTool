@@ -83,6 +83,48 @@ public class ProjectSettings
     /// </summary>
     public string BlueprintExtraArguments { get; set; } = "";
 
+    // ---------------------------------------------------------------- Launch page
+
+    /// <summary>/Game path of the map to open. Empty means the project's GameDefaultMap.</summary>
+    public string LaunchMap { get; set; } = "";
+
+    /// <summary>A <see cref="Services.LaunchMode"/> name, kept as a string so a renamed mode degrades to the default.</summary>
+    public string LaunchMode { get; set; } = "Standalone";
+
+    public int LaunchClientCount { get; set; } = 2;
+
+    public int LaunchPort { get; set; } = 7777;
+
+    /// <summary>Where "Client only" connects. Local host by default.</summary>
+    public string LaunchConnectAddress { get; set; } = "127.0.0.1";
+
+    public bool LaunchWindowed { get; set; } = true;
+
+    public int LaunchResX { get; set; } = 1280;
+
+    public int LaunchResY { get; set; } = 720;
+
+    /// <summary>Lay several game windows out side by side instead of stacked on top of each other.</summary>
+    public bool LaunchTileWindows { get; set; } = true;
+
+    /// <summary>?game= override, e.g. /Script/MyGame.MyGameMode. Empty uses the map's own.</summary>
+    public string LaunchGameMode { get; set; } = "";
+
+    /// <summary>Appended to the map URL verbatim, e.g. ?Name=Tester.</summary>
+    public string LaunchUrlOptions { get; set; } = "";
+
+    public string LaunchRhi { get; set; } = "Default";
+
+    public bool LaunchNoSound { get; set; }
+
+    public bool LaunchShowLogConsole { get; set; }
+
+    public string LaunchExecCmds { get; set; } = "";
+
+    public bool LaunchNoSteam { get; set; }
+
+    public string LaunchExtraArguments { get; set; } = "";
+
     public BuildPreset GetActivePreset()
     {
         if (Presets.Count == 0)

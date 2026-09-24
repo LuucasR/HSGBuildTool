@@ -117,6 +117,18 @@ public sealed class OutputService : IDisposable
     /// <summary>Writes a line of process output, classified by <see cref="LogParser"/>.</summary>
     public void Write(string line) => Add(LogParser.Parse(line));
 
+    /// <summary>
+    /// Writes a line from one of several processes running at once, tagged with which one
+    /// — "[Client 2] LogNet: ...". Parsed before the tag goes on, so the timestamp prefix
+    /// the parser strips is still at the start of the line when it looks.
+    /// </summary>
+    public void Write(string line, string source)
+    {
+        var entry = LogParser.Parse(line);
+
+        Add(new LogEntry { Text = $"[{source}] {entry.Text}", Severity = entry.Severity, Category = entry.Category });
+    }
+
     /// <summary>Writes one of the tool's own messages, with an explicit severity.</summary>
     public void WriteTool(string message, LogSeverity severity = LogSeverity.Info)
         => Add(new LogEntry { Text = message, Severity = severity, Category = "FMFC" });

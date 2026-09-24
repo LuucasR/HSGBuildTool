@@ -54,6 +54,10 @@
             <views:HlodPage/>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:LaunchViewModel}">
+            <views:LaunchPage/>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:BuildQueueViewModel}">
             <views:QueueView/>
         </DataTemplate>
@@ -257,6 +261,22 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Margin="0,12,8,0">
+
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="RUN" Margin="16,0,0,6"/>
+
+                        <!-- Play the game out of the editor binaries, without the editor. -->
+                        <RadioButton Style="{StaticResource RailItem}"
+                                     Command="{Binding ShowPageCommand}"
+                                     CommandParameter="Launch"
+                                     IsChecked="{Binding CurrentPageKey, Mode=OneWay, Converter={StaticResource Equals}, ConverterParameter=Launch}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Style="{StaticResource RailIcon}"
+                                      Data="M4 2.5 L13 8 L4 13.5 Z"/>
+                                <TextBlock Text="Launch" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <Separator Margin="16,12,4,10"/>
 
                         <TextBlock Style="{StaticResource SectionLabel}" Text="BUILD" Margin="16,0,0,6"/>
 
